@@ -161,7 +161,7 @@ function App() {
   const handleGeneratePdf = async () => {
     if (!spotifyUri || !trackInfo) return
     try {
-      await generatePdf()
+      await generatePdf(spotifyUri, trackInfo)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate PDF')
     }

@@ -1,12 +1,20 @@
 import { useState } from 'react'
+import { styled } from "styled-components";
 import './App.css'
+
+
+const URLStyled = styled.div`
+  font-size: 16px;
+`;
+
+
 
 function App() {
   const [songUrl, setSongUrl] = useState('')
 
   return (
     <div className="app-container">
-      <label htmlFor="song-url">Song URL</label>
+      <URLStyled>Song URL:</URLStyled>
       <input
         id="song-url"
         type="text"

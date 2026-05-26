@@ -161,7 +161,7 @@ function App() {
   const handleGeneratePdf = async () => {
     if (!spotifyUri || !trackInfo) return
     try {
-      await generatePdf(spotifyUri, trackInfo)
+      await generatePdf()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate PDF')
     }
@@ -188,7 +188,7 @@ function App() {
       </Row>
       {error && <ErrorText>{error}</ErrorText>}
       {spotifyUri && (
-        <CardsPreview>
+        <CardsPreview className="cards-preview">
           <Card className="qr-preview">
             <QRCodeSVG value={spotifyUri} size={120} />
           </Card>

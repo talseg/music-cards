@@ -36,15 +36,15 @@ export async function generatePdf(): Promise<void> {
     )
   )
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
 
-  // Center the cards horizontally on A4 (210mm wide)
+  // Center the cards horizontally on A4 landscape (297mm wide)
   const totalWidth = count * CARD_W_MM
-  const startX = (210 - totalWidth) / 2
+  const startX = (297 - totalWidth) / 2
 
-  // Center the two rows vertically on A4 (297mm tall)
+  // Center the two rows vertically on A4 landscape (210mm tall)
   const totalHeight = CARD_H_MM * 2
-  const startY = (297 - totalHeight) / 2
+  const startY = (210 - totalHeight) / 2
 
   // Top row: detail cards
   for (let i = 0; i < count; i++) {

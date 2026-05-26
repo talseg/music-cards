@@ -100,15 +100,15 @@ const Card = styled.div`
 `
 
 const CardNote = styled.div`
-  font-size: 0.65rem;
-  color: #b4b4b4;
+  font-size: 2.0rem;
+  color: #3fdf0a;
   margin-bottom: 4px;
 `
 
 const SongName = styled.div`
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: #cd0000;
   text-align: center;
   padding: 0 12px;
   margin-bottom: 6px;
@@ -117,7 +117,7 @@ const SongName = styled.div`
 
 const ArtistName = styled.div`
   font-size: 0.8rem;
-  color: #16213e;
+  color: #002a9c;
   text-align: center;
   padding: 0 12px;
   margin-bottom: 10px;

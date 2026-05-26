@@ -2,6 +2,7 @@ import { useState } from 'react'
 import styled from 'styled-components'
 import { QRCodeSVG } from 'qrcode.react'
 import { version } from '../package.json'
+import { fetchTrackInfo, type TrackInfo } from './spotify'
 
 const AppWrapper = styled.div`
   display: flex;
@@ -46,10 +47,39 @@ const Button = styled.button`
   &:hover {
     background: #e8e8e8;
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
 `
 
-const QRContainer = styled.div`
+const ResultContainer = styled.div`
   margin-top: 24px;
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+`
+
+const TrackDetails = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`
+
+const DetailRow = styled.div`
+  font-size: 1rem;
+`
+
+const DetailLabel = styled.span`
+  font-weight: bold;
+  margin-right: 8px;
+`
+
+const ErrorText = styled.div`
+  margin-top: 16px;
+  color: #cc0000;
+  font-size: 0.9rem;
 `
 
 function extractTrackId(input: string): string {
@@ -65,8 +95,11 @@ function extractTrackId(input: string): string {
 function App() {
   const [songUrl, setSongUrl] = useState('')
   const [spotifyUri, setSpotifyUri] = useState<string | null>(null)
+  const [trackInfo, setTrackInfo] = useState<TrackInfo | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!songUrl.trim()) {
       alert('Please enter a song URL')
       return
@@ -74,6 +107,18 @@ function App() {
 
     const trackId = extractTrackId(songUrl.trim())
     setSpotifyUri(`spotify:track:${trackId}`)
+    setTrackInfo(null)
+    setError(null)
+    setLoading(true)
+
+    try {
+      const info = await fetchTrackInfo(trackId)
+      setTrackInfo(info)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch track info')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -88,12 +133,28 @@ function App() {
           onChange={(e) => setSongUrl(e.target.value)}
           placeholder="https://open.spotify.com/track/..."
         />
-        <Button onClick={handleGenerate}>Generate</Button>
+        <Button onClick={handleGenerate} disabled={loading}>
+          {loading ? 'Loading...' : 'Generate'}
+        </Button>
       </Row>
+      {error && <ErrorText>{error}</ErrorText>}
       {spotifyUri && (
-        <QRContainer>
+        <ResultContainer>
           <QRCodeSVG value={spotifyUri} size={256} />
-        </QRContainer>
+          {trackInfo && (
+            <TrackDetails>
+              <DetailRow>
+                <DetailLabel>Song:</DetailLabel>{trackInfo.name}
+              </DetailRow>
+              <DetailRow>
+                <DetailLabel>Artist:</DetailLabel>{trackInfo.artist}
+              </DetailRow>
+              <DetailRow>
+                <DetailLabel>Year:</DetailLabel>{trackInfo.year}
+              </DetailRow>
+            </TrackDetails>
+          )}
+        </ResultContainer>
       )}
     </AppWrapper>
   )

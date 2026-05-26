@@ -113,6 +113,17 @@ const SongName = styled.div`
   padding: 0 12px;
   margin-bottom: 6px;
   word-break: break-word;
+  cursor: text;
+  outline: none;
+  min-width: 20px;
+
+  &:hover {
+    outline: 1px dashed #ccc;
+  }
+
+  &:focus {
+    outline: 1px dashed #999;
+  }
 `
 
 const ArtistName = styled.div`
@@ -121,12 +132,34 @@ const ArtistName = styled.div`
   text-align: center;
   padding: 0 12px;
   margin-bottom: 10px;
+  cursor: text;
+  outline: none;
+  min-width: 20px;
+
+  &:hover {
+    outline: 1px dashed #ccc;
+  }
+
+  &:focus {
+    outline: 1px dashed #999;
+  }
 `
 
 const YearText = styled.div`
   font-size: 0.75rem;
   color: #0f3460;
   font-weight: 500;
+  cursor: text;
+  outline: none;
+  min-width: 20px;
+
+  &:hover {
+    outline: 1px dashed #ccc;
+  }
+
+  &:focus {
+    outline: 1px dashed #999;
+  }
 `
 
 const QrCardContent = styled.div`
@@ -252,9 +285,9 @@ function App() {
             {cards.map((card, i) => (
               <Card key={`detail-${i}`}>
                 <CardNote>♫</CardNote>
-                <SongName>{card.trackInfo.name}</SongName>
-                <ArtistName>{card.trackInfo.artist}</ArtistName>
-                <YearText>{card.trackInfo.year}</YearText>
+                <SongName contentEditable suppressContentEditableWarning>{card.trackInfo.name}</SongName>
+                <ArtistName contentEditable suppressContentEditableWarning>{card.trackInfo.artist}</ArtistName>
+                <YearText contentEditable suppressContentEditableWarning>{card.trackInfo.year}</YearText>
               </Card>
             ))}
           </CardRow>

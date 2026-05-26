@@ -5,6 +5,8 @@ import { version } from '../package.json'
 import { fetchTrackInfo, type TrackInfo } from './spotify'
 import { generatePdf } from './pdfGenerator'
 
+const NUM_SLOTS = 4
+
 const AppWrapper = styled.div`
   display: flex;
   flex-direction: column;
@@ -17,6 +19,12 @@ const VersionLabel = styled.div`
   margin-bottom: 32px;
 `
 
+const InputRows = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`
+
 const Row = styled.div`
   display: flex;
   align-items: center;
@@ -26,6 +34,7 @@ const Row = styled.div`
 const Label = styled.label`
   font-size: 1rem;
   white-space: nowrap;
+  width: 90px;
 `
 
 const Input = styled.input`
@@ -63,13 +72,16 @@ const ErrorText = styled.div`
 
 const CardsPreview = styled.div`
   margin-top: 32px;
+  display: inline-flex;
+  flex-direction: column;
+`
+
+const CardRow = styled.div`
   display: flex;
-  gap: 24px;
-  align-items: flex-start;
 `
 
 // Standard playing card: 63.5mm × 88.9mm
-// At screen preview scale: ~2.5px per mm
+// Screen preview scale: ~2.5px per mm
 const CARD_WIDTH_PX = 159
 const CARD_HEIGHT_PX = 222
 const CARD_RADIUS_PX = 8
@@ -87,12 +99,10 @@ const Card = styled.div`
   overflow: hidden;
 `
 
-const CardTitle = styled.div`
+const CardNote = styled.div`
   font-size: 0.65rem;
-  color: #999;
+  color: #b4b4b4;
   margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
 `
 
 const SongName = styled.div`
@@ -119,6 +129,11 @@ const YearText = styled.div`
   font-weight: 500;
 `
 
+interface CardData {
+  spotifyUri: string
+  trackInfo: TrackInfo
+}
+
 function extractTrackId(input: string): string {
   if (input.includes('/')) {
     return input.split('/').pop() || input
@@ -130,27 +145,45 @@ function extractTrackId(input: string): string {
 }
 
 function App() {
-  const [songUrl, setSongUrl] = useState('')
-  const [spotifyUri, setSpotifyUri] = useState<string | null>(null)
-  const [trackInfo, setTrackInfo] = useState<TrackInfo | null>(null)
+  const [urls, setUrls] = useState<string[]>(Array(NUM_SLOTS).fill(''))
+  const [cards, setCards] = useState<CardData[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleGenerate = async () => {
-    if (!songUrl.trim()) {
-      alert('Please enter a song URL')
-      return
-    }
+  const hasAnyInput = urls.some((u) => u.trim() !== '')
+  const hasCards = cards.length > 0
 
-    const trackId = extractTrackId(songUrl.trim())
-    setSpotifyUri(`spotify:track:${trackId}`)
-    setTrackInfo(null)
+  const updateUrl = (index: number, value: string) => {
+    setUrls((prev) => {
+      const next = [...prev]
+      next[index] = value
+      return next
+    })
+  }
+
+  const handleGenerate = async () => {
+    const filledUrls = urls
+      .map((u, i) => ({ url: u.trim(), index: i }))
+      .filter((item) => item.url !== '')
+
+    if (filledUrls.length === 0) return
+
+    setCards([])
     setError(null)
     setLoading(true)
 
     try {
-      const info = await fetchTrackInfo(trackId)
-      setTrackInfo(info)
+      const results = await Promise.all(
+        filledUrls.map(async (item) => {
+          const trackId = extractTrackId(item.url)
+          const trackInfo = await fetchTrackInfo(trackId)
+          return {
+            spotifyUri: `spotify:track:${trackId}`,
+            trackInfo,
+          }
+        })
+      )
+      setCards(results)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch track info')
     } finally {
@@ -159,7 +192,7 @@ function App() {
   }
 
   const handleGeneratePdf = async () => {
-    if (!spotifyUri || !trackInfo) return
+    if (!hasCards) return
     try {
       await generatePdf()
     } catch (e) {
@@ -170,36 +203,50 @@ function App() {
   return (
     <AppWrapper>
       <VersionLabel>project version: {version}</VersionLabel>
-      <Row>
-        <Label htmlFor="song-url">Song URL</Label>
-        <Input
-          id="song-url"
-          type="text"
-          value={songUrl}
-          onChange={(e) => setSongUrl(e.target.value)}
-          placeholder="https://open.spotify.com/track/..."
-        />
-        <Button onClick={handleGenerate} disabled={loading}>
-          {loading ? 'Loading...' : 'Generate'}
-        </Button>
-        <Button onClick={handleGeneratePdf} disabled={!spotifyUri || !trackInfo}>
-          Generate PDF
-        </Button>
-      </Row>
+      <InputRows>
+        {urls.map((url, i) => (
+          <Row key={i}>
+            <Label htmlFor={`song-url-${i}`}>Song URL {i + 1}:</Label>
+            <Input
+              id={`song-url-${i}`}
+              type="text"
+              value={url}
+              onChange={(e) => updateUrl(i, e.target.value)}
+              placeholder="https://open.spotify.com/track/..."
+            />
+            {i === 0 && (
+              <>
+                <Button onClick={handleGenerate} disabled={loading || !hasAnyInput}>
+                  {loading ? 'Loading...' : 'Generate'}
+                </Button>
+                <Button onClick={handleGeneratePdf} disabled={!hasCards}>
+                  Generate PDF
+                </Button>
+              </>
+            )}
+          </Row>
+        ))}
+      </InputRows>
       {error && <ErrorText>{error}</ErrorText>}
-      {spotifyUri && (
+      {hasCards && (
         <CardsPreview className="cards-preview">
-          <Card className="qr-preview">
-            <QRCodeSVG value={spotifyUri} size={120} />
-          </Card>
-          {trackInfo && (
-            <Card>
-              <CardTitle>♫</CardTitle>
-              <SongName>{trackInfo.name}</SongName>
-              <ArtistName>{trackInfo.artist}</ArtistName>
-              <YearText>{trackInfo.year}</YearText>
-            </Card>
-          )}
+          <CardRow className="cards-row-details">
+            {cards.map((card, i) => (
+              <Card key={`detail-${i}`}>
+                <CardNote>♫</CardNote>
+                <SongName>{card.trackInfo.name}</SongName>
+                <ArtistName>{card.trackInfo.artist}</ArtistName>
+                <YearText>{card.trackInfo.year}</YearText>
+              </Card>
+            ))}
+          </CardRow>
+          <CardRow className="cards-row-qr">
+            {cards.map((card, i) => (
+              <Card key={`qr-${i}`}>
+                <QRCodeSVG value={card.spotifyUri} size={120} />
+              </Card>
+            ))}
+          </CardRow>
         </CardsPreview>
       )}
     </AppWrapper>

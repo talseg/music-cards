@@ -129,6 +129,24 @@ const YearText = styled.div`
   font-weight: 500;
 `
 
+const QrCardContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(180deg);
+  width: 100%;
+  height: 100%;
+  gap: 12px;
+`
+
+const GameCardLabel = styled.div`
+  font-size: 0.75rem;
+  color: #5c0adf;
+  font-weight: 500;
+  letter-spacing: 1px;
+`
+
 interface CardData {
   spotifyUri: string
   trackInfo: TrackInfo
@@ -243,7 +261,10 @@ function App() {
           <CardRow className="cards-row-qr">
             {cards.map((card, i) => (
               <Card key={`qr-${i}`}>
-                <QRCodeSVG value={card.spotifyUri} size={120} />
+                <QrCardContent>
+                  <GameCardLabel>My Song Cards ©</GameCardLabel>
+                  <QRCodeSVG value={card.spotifyUri} size={120} />
+                </QrCardContent>
               </Card>
             ))}
           </CardRow>

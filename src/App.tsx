@@ -175,7 +175,7 @@ const QrCardContent = styled.div`
 
 const GameCardLabel = styled.div`
   font-size: 0.75rem;
-  color: #5c0adf;
+  color: #3fdf0a;
   font-weight: 500;
   letter-spacing: 1px;
 `

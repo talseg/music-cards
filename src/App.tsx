@@ -295,7 +295,7 @@ function App() {
             {cards.map((card, i) => (
               <Card key={`qr-${i}`}>
                 <QrCardContent>
-                  <GameCardLabel>My Song Cards ©</GameCardLabel>
+                  <GameCardLabel>My Song ©</GameCardLabel>
                   <QRCodeSVG value={card.spotifyUri} size={120} />
                 </QrCardContent>
               </Card>

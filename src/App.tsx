@@ -1,77 +1,292 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import styled from 'styled-components'
 import { QRCodeSVG } from 'qrcode.react'
 import { version } from '../package.json'
 import { fetchTrackInfo, type TrackInfo } from './spotify'
 import { generatePdf } from './pdfGenerator'
 
-const NUM_SLOTS = 4
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CARDS_PER_SHEET = 4
+const CARD_WIDTH_PX = 159
+const CARD_HEIGHT_PX = 222
+const CARD_RADIUS_PX = 8
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CardData {
+  id: number
+  spotifyUri: string
+  trackInfo: TrackInfo
+}
+
+// ─── Styled Components ────────────────────────────────────────────────────────
 
 const AppWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  padding: 40px;
+  padding: 32px 40px;
+  min-height: 100vh;
+  background: #fafafa;
 `
 
 const VersionLabel = styled.div`
-  font-size: 0.75rem;
-  color: #888;
-  margin-bottom: 32px;
+  font-size: 0.7rem;
+  color: #aaa;
+  margin-bottom: 24px;
 `
 
-const InputRows = styled.div`
+const TopPanel = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  max-width: 680px;
 `
 
-const Row = styled.div`
+const InputRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-`
-
-const Label = styled.label`
-  font-size: 1rem;
-  white-space: nowrap;
-  width: 90px;
+  gap: 10px;
 `
 
 const Input = styled.input`
-  font-size: 1rem;
+  font-size: 0.95rem;
   padding: 8px 12px;
-  width: 360px;
+  flex: 1;
   border: 1px solid #ccc;
   border-radius: 4px;
+  background: white;
+  outline: none;
+
+  &:focus {
+    border-color: #888;
+  }
 `
 
-const Button = styled.button`
-  font-size: 1rem;
-  padding: 8px 20px;
-  border: 1px solid #ccc;
+const Button = styled.button<{ $primary?: boolean }>`
+  font-size: 0.95rem;
+  padding: 8px 18px;
+  border: 1px solid ${p => p.$primary ? '#2a6' : '#ccc'};
   border-radius: 4px;
-  background: #f5f5f5;
+  background: ${p => p.$primary ? '#2a6' : '#f5f5f5'};
+  color: ${p => p.$primary ? 'white' : '#333'};
   cursor: pointer;
   white-space: nowrap;
+  font-weight: ${p => p.$primary ? 600 : 400};
 
   &:hover {
-    background: #e8e8e8;
+    background: ${p => p.$primary ? '#298' : '#e8e8e8'};
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.5;
   }
 `
 
 const ErrorText = styled.div`
-  margin-top: 16px;
   color: #cc0000;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  margin-top: 2px;
 `
 
-const CardsPreview = styled.div`
-  margin-top: 32px;
+// ─── Song List ────────────────────────────────────────────────────────────────
+
+const ListPanel = styled.div`
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+`
+
+const ListScroll = styled.div`
+  max-height: 240px;
+  overflow-y: auto;
+  background: white;
+`
+
+const ListEmpty = styled.div`
+  padding: 20px 16px;
+  font-size: 0.85rem;
+  color: #aaa;
+  text-align: center;
+`
+
+const ListItem = styled.div<{ $selected: boolean }>`
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  background: ${p => p.$selected ? '#e8f4ff' : 'white'};
+  font-weight: ${p => p.$selected ? 700 : 400};
+  color: ${p => p.$selected ? '#0052cc' : '#333'};
+  gap: 8px;
+  user-select: none;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: ${p => p.$selected ? '#d4ecff' : '#f7f7f7'};
+  }
+`
+
+const ListItemNum = styled.span`
+  font-size: 0.75rem;
+  color: #aaa;
+  width: 22px;
+  flex-shrink: 0;
+  text-align: right;
+`
+
+const ListItemName = styled.span`
+  flex: 1;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
+const ListItemArtist = styled.span`
+  font-size: 0.8rem;
+  color: #777;
+  flex-shrink: 0;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
+const ListItemYear = styled.span`
+  font-size: 0.78rem;
+  color: #aaa;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+`
+
+const DeleteBtn = styled.button`
+  font-size: 1rem;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+
+  &:hover {
+    background: #fee;
+    border-color: #f99;
+    color: #c33;
+  }
+`
+
+// ─── Bottom Controls ──────────────────────────────────────────────────────────
+
+const BottomControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+`
+
+const SheetCounter = styled.div`
+  font-size: 0.82rem;
+  color: #888;
+  white-space: nowrap;
+`
+
+const CheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+
+  input[type=checkbox] {
+    cursor: pointer;
+  }
+`
+
+const SongCounter = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 4px 8px;
+`
+
+const SongCounterLabel = styled.span`
+  font-size: 0.78rem;
+  color: #888;
+  white-space: nowrap;
+`
+
+const SongCounterValue = styled.input`
+  width: 44px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  border: none;
+  background: transparent;
+  text-align: center;
+  outline: none;
+  padding: 0;
+
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+  }
+`
+
+const CounterBtn = styled.button`
+  width: 22px;
+  height: 22px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: white;
+  color: #555;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+
+  &:hover {
+    background: #e8e8e8;
+  }
+`
+
+// ─── Card Preview ─────────────────────────────────────────────────────────────
+
+const PreviewSection = styled.div`
+  margin-top: 28px;
+`
+
+const PreviewTitle = styled.div`
+  font-size: 0.75rem;
+  color: #aaa;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`
+
+const CardGrid = styled.div`
   display: inline-flex;
   flex-direction: column;
 `
@@ -79,12 +294,6 @@ const CardsPreview = styled.div`
 const CardRow = styled.div`
   display: flex;
 `
-
-// Standard playing card: 63.5mm × 88.9mm
-// Screen preview scale: ~2.5px per mm
-const CARD_WIDTH_PX = 159
-const CARD_HEIGHT_PX = 222
-const CARD_RADIUS_PX = 8
 
 const Card = styled.div`
   width: ${CARD_WIDTH_PX}px;
@@ -97,6 +306,11 @@ const Card = styled.div`
   justify-content: center;
   background: white;
   overflow: hidden;
+`
+
+const CardPlaceholder = styled(Card)`
+  border: 1px dashed #ccc;
+  background: #fafafa;
 `
 
 const CardNote = styled.div`
@@ -117,13 +331,8 @@ const SongName = styled.div`
   outline: none;
   min-width: 20px;
 
-  &:hover {
-    outline: 1px dashed #ccc;
-  }
-
-  &:focus {
-    outline: 1px dashed #999;
-  }
+  &:hover { outline: 1px dashed #ccc; }
+  &:focus { outline: 1px dashed #999; }
 `
 
 const ArtistName = styled.div`
@@ -136,13 +345,8 @@ const ArtistName = styled.div`
   outline: none;
   min-width: 20px;
 
-  &:hover {
-    outline: 1px dashed #ccc;
-  }
-
-  &:focus {
-    outline: 1px dashed #999;
-  }
+  &:hover { outline: 1px dashed #ccc; }
+  &:focus { outline: 1px dashed #999; }
 `
 
 const YearText = styled.div`
@@ -153,13 +357,8 @@ const YearText = styled.div`
   outline: none;
   min-width: 20px;
 
-  &:hover {
-    outline: 1px dashed #ccc;
-  }
-
-  &:focus {
-    outline: 1px dashed #999;
-  }
+  &:hover { outline: 1px dashed #ccc; }
+  &:focus { outline: 1px dashed #999; }
 `
 
 const QrCardContent = styled.div`
@@ -180,61 +379,80 @@ const GameCardLabel = styled.div`
   letter-spacing: 1px;
 `
 
-interface CardData {
-  spotifyUri: string
-  trackInfo: TrackInfo
-}
+// Hidden container: renders all cards off-screen for PDF capture
+const HiddenCards = styled.div`
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+`
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function extractTrackId(input: string): string {
-  if (input.includes('/')) {
-    return input.split('/').pop() || input
-  }
-  if (input.includes(':')) {
-    return input.split(':').pop() || input
-  }
-  return input
+  const trimmed = input.trim()
+  const urlMatch = trimmed.match(/open\.spotify\.com\/track\/([A-Za-z0-9]+)/)
+  if (urlMatch) return urlMatch[1]
+  if (trimmed.includes(':')) return trimmed.split(':').pop() || trimmed
+  return trimmed
 }
 
+function sheetCount(cardCount: number): string {
+  if (cardCount === 0) return '0'
+  const sheets = cardCount / CARDS_PER_SHEET
+  const nearest = Math.ceil(sheets * 4) / 4
+  if (Number.isInteger(nearest)) return String(nearest)
+  const str = nearest.toFixed(2)
+  return str.replace(/\.?0+$/, '')
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+
+let nextId = 1
+
 function App() {
-  const [urls, setUrls] = useState<string[]>(Array(NUM_SLOTS).fill(''))
+  const [urlInput, setUrlInput] = useState('')
   const [cards, setCards] = useState<CardData[]>([])
+  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [displayLayout, setDisplayLayout] = useState(false)
+  const [songCounter, setSongCounter] = useState(1)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const hasAnyInput = urls.some((u) => u.trim() !== '')
-  const hasCards = cards.length > 0
+  const selectedCard = cards.find(c => c.id === selectedId) ?? null
+  const selectedIndex = selectedCard ? cards.findIndex(c => c.id === selectedId) : -1
+  const selectedSheetIndex = selectedIndex >= 0 ? Math.ceil((selectedIndex + 1) / CARDS_PER_SHEET) : null
 
-  const updateUrl = (index: number, value: string) => {
-    setUrls((prev) => {
-      const next = [...prev]
-      next[index] = value
-      return next
-    })
-  }
+  // Cards on the sheet containing the selected card
+  const sheetCards: (CardData | null)[] = selectedSheetIndex !== null
+    ? Array.from({ length: CARDS_PER_SHEET }, (_, i) => {
+        const idx = (selectedSheetIndex - 1) * CARDS_PER_SHEET + i
+        return cards[idx] ?? null
+      })
+    : []
 
-  const handleGenerate = async () => {
-    const filledUrls = urls
-      .map((u, i) => ({ url: u.trim(), index: i }))
-      .filter((item) => item.url !== '')
+  const handleAdd = async () => {
+    const raw = urlInput.trim()
+    if (!raw) return
+    const trackId = extractTrackId(raw)
+    if (!trackId) return
 
-    if (filledUrls.length === 0) return
-
-    setCards([])
-    setError(null)
     setLoading(true)
+    setError(null)
 
     try {
-      const results = await Promise.all(
-        filledUrls.map(async (item) => {
-          const trackId = extractTrackId(item.url)
-          const trackInfo = await fetchTrackInfo(trackId)
-          return {
-            spotifyUri: `spotify:track:${trackId}`,
-            trackInfo,
-          }
-        })
-      )
-      setCards(results)
+      const trackInfo = await fetchTrackInfo(trackId)
+      const id = nextId++
+      const newCard: CardData = { id, spotifyUri: `spotify:track:${trackId}`, trackInfo }
+      setCards(prev => [...prev, newCard])
+      setSelectedId(id)
+      setUrlInput('')
+      setSongCounter(prev => prev + 1)
+      inputRef.current?.focus()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch track info')
     } finally {
@@ -242,67 +460,216 @@ function App() {
     }
   }
 
+  const handleDelete = (id: number) => {
+    setCards(prev => prev.filter(c => c.id !== id))
+    setSongCounter(prev => Math.max(1, prev - 1))
+    if (selectedId === id) setSelectedId(null)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleAdd()
+  }
+
   const handleGeneratePdf = async () => {
-    if (!hasCards) return
+    if (cards.length === 0) return
+    setPdfLoading(true)
+    setError(null)
     try {
-      await generatePdf()
+      await generatePdf(
+        cards.map(c => ({ spotifyUri: c.spotifyUri, trackInfo: c.trackInfo })),
+        cards.map(c => c.id)
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate PDF')
+    } finally {
+      setPdfLoading(false)
     }
   }
 
+  // ─── Card renderers ──────────────────────────────────────────────────────
+
+  const renderFrontCard = (card: CardData, attrs?: Record<string, string>) => (
+    <Card key={`detail-${card.id}`} {...attrs}>
+      <CardNote>♫</CardNote>
+      <SongName contentEditable suppressContentEditableWarning>{card.trackInfo.name}</SongName>
+      <ArtistName contentEditable suppressContentEditableWarning>{card.trackInfo.artist}</ArtistName>
+      <YearText contentEditable suppressContentEditableWarning>{card.trackInfo.year}</YearText>
+    </Card>
+  )
+
+  const renderBackCard = (card: CardData, attrs?: Record<string, string>) => (
+    <Card key={`qr-${card.id}`} {...attrs}>
+      <QrCardContent>
+        <GameCardLabel>My Song ©</GameCardLabel>
+        <QRCodeSVG value={card.spotifyUri} size={120} />
+      </QrCardContent>
+    </Card>
+  )
+
+  // ─── Preview ─────────────────────────────────────────────────────────────
+
+  const renderPreview = () => {
+    if (!selectedCard) return null
+
+    if (displayLayout) {
+      // Full sheet layout with placeholders
+      return (
+        <CardGrid>
+          <CardRow>
+            {sheetCards.map((card, i) =>
+              card
+                ? renderFrontCard(card, { 'data-pdf-detail': String(card.id) })
+                : <CardPlaceholder key={`ph-f-${i}`} />
+            )}
+          </CardRow>
+          <CardRow>
+            {sheetCards.map((card, i) =>
+              card
+                ? renderBackCard(card, { 'data-pdf-qr': String(card.id) })
+                : <CardPlaceholder key={`ph-b-${i}`} />
+            )}
+          </CardRow>
+        </CardGrid>
+      )
+    }
+
+    // Single card preview
+    return (
+      <CardGrid>
+        <CardRow>
+          {renderFrontCard(selectedCard, { 'data-pdf-detail': String(selectedCard.id) })}
+        </CardRow>
+        <CardRow>
+          {renderBackCard(selectedCard, { 'data-pdf-qr': String(selectedCard.id) })}
+        </CardRow>
+      </CardGrid>
+    )
+  }
+
+  // Cards NOT currently shown in the preview need to be rendered hidden for PDF capture
+  const visibleIds = new Set<number>()
+  if (selectedCard) {
+    if (displayLayout) {
+      sheetCards.forEach(c => c && visibleIds.add(c.id))
+    } else {
+      visibleIds.add(selectedCard.id)
+    }
+  }
+  const hiddenCards = cards.filter(c => !visibleIds.has(c.id))
+
   return (
     <AppWrapper>
-      <VersionLabel>project version: {version}</VersionLabel>
-      <InputRows>
-        {urls.map((url, i) => (
-          <Row key={i}>
-            <Label htmlFor={`song-url-${i}`}>Song URL {i + 1}:</Label>
-            <Input
-              id={`song-url-${i}`}
-              type="text"
-              value={url}
-              onChange={(e) => updateUrl(i, e.target.value)}
-              placeholder="https://open.spotify.com/track/..."
+      <VersionLabel>music-cards v{version}</VersionLabel>
+
+      <TopPanel>
+        {/* URL input row */}
+        <InputRow>
+          <Input
+            ref={inputRef}
+            type="text"
+            value={urlInput}
+            onChange={e => setUrlInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="https://open.spotify.com/track/…"
+            disabled={loading}
+          />
+          <Button $primary onClick={handleAdd} disabled={loading || !urlInput.trim()}>
+            {loading ? 'Loading…' : '+ Add'}
+          </Button>
+        </InputRow>
+
+        {error && <ErrorText>{error}</ErrorText>}
+
+        {/* Song list */}
+        <ListPanel>
+          <ListScroll>
+            {cards.length === 0
+              ? <ListEmpty>No songs yet — paste a Spotify URL above and press Add</ListEmpty>
+              : cards.map((card, idx) => (
+                <ListItem
+                  key={card.id}
+                  $selected={card.id === selectedId}
+                  onClick={() => setSelectedId(card.id)}
+                >
+                  <ListItemNum>{idx + 1}</ListItemNum>
+                  <ListItemName>{card.trackInfo.name}</ListItemName>
+                  <ListItemArtist>{card.trackInfo.artist}</ListItemArtist>
+                  <ListItemYear>{card.trackInfo.year}</ListItemYear>
+                  <DeleteBtn
+                    title="Remove"
+                    onClick={e => { e.stopPropagation(); handleDelete(card.id) }}
+                  >
+                    −
+                  </DeleteBtn>
+                </ListItem>
+              ))
+            }
+          </ListScroll>
+        </ListPanel>
+
+        {/* Controls row */}
+        <BottomControls>
+          <Button
+            onClick={handleGeneratePdf}
+            disabled={cards.length === 0 || pdfLoading}
+          >
+            {pdfLoading ? 'Generating…' : 'Generate PDF'}
+          </Button>
+
+          <SheetCounter>
+            {cards.length > 0
+              ? `${sheetCount(cards.length)} sheet${parseFloat(sheetCount(cards.length)) !== 1 ? 's' : ''}`
+              : '—'}
+          </SheetCounter>
+
+          <CheckboxLabel>
+            <input
+              type="checkbox"
+              checked={displayLayout}
+              onChange={e => setDisplayLayout(e.target.checked)}
+              disabled={!selectedCard}
             />
-            {i === 0 && (
-              <>
-                <Button onClick={handleGenerate} disabled={loading || !hasAnyInput}>
-                  {loading ? 'Loading...' : 'Generate'}
-                </Button>
-                <Button onClick={handleGeneratePdf} disabled={!hasCards}>
-                  Generate PDF
-                </Button>
-              </>
-            )}
-          </Row>
-        ))}
-      </InputRows>
-      {error && <ErrorText>{error}</ErrorText>}
-      {hasCards && (
-        <CardsPreview className="cards-preview">
-          <CardRow className="cards-row-details">
-            {cards.map((card, i) => (
-              <Card key={`detail-${i}`}>
-                <CardNote>♫</CardNote>
-                <SongName contentEditable suppressContentEditableWarning>{card.trackInfo.name}</SongName>
-                <ArtistName contentEditable suppressContentEditableWarning>{card.trackInfo.artist}</ArtistName>
-                <YearText contentEditable suppressContentEditableWarning>{card.trackInfo.year}</YearText>
-              </Card>
-            ))}
-          </CardRow>
-          <CardRow className="cards-row-qr">
-            {cards.map((card, i) => (
-              <Card key={`qr-${i}`}>
-                <QrCardContent>
-                  <GameCardLabel>My Song ©</GameCardLabel>
-                  <QRCodeSVG value={card.spotifyUri} size={120} />
-                </QrCardContent>
-              </Card>
-            ))}
-          </CardRow>
-        </CardsPreview>
+            Display Layout
+          </CheckboxLabel>
+
+          <SongCounter>
+            <SongCounterLabel>Song #</SongCounterLabel>
+            <CounterBtn onClick={() => setSongCounter(p => Math.max(1, p - 1))}>−</CounterBtn>
+            <SongCounterValue
+              type="number"
+              value={songCounter}
+              min={1}
+              onChange={e => {
+                const v = parseInt(e.target.value, 10)
+                if (!isNaN(v) && v >= 1) setSongCounter(v)
+              }}
+            />
+            <CounterBtn onClick={() => setSongCounter(p => p + 1)}>+</CounterBtn>
+          </SongCounter>
+        </BottomControls>
+      </TopPanel>
+
+      {/* Visible preview */}
+      {selectedCard && (
+        <PreviewSection>
+          <PreviewTitle>
+            {displayLayout
+              ? `Sheet ${selectedSheetIndex} layout`
+              : `Preview — ${selectedCard.trackInfo.name}`}
+          </PreviewTitle>
+          {renderPreview()}
+        </PreviewSection>
       )}
+
+      {/* Hidden cards rendered off-screen for PDF capture */}
+      <HiddenCards aria-hidden="true">
+        {hiddenCards.map(card => (
+          <div key={card.id}>
+            {renderFrontCard(card, { 'data-pdf-detail': String(card.id) })}
+            {renderBackCard(card, { 'data-pdf-qr': String(card.id) })}
+          </div>
+        ))}
+      </HiddenCards>
     </AppWrapper>
   )
 }

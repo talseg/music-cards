@@ -30,23 +30,38 @@ export async function fetchPlaylistTracks(
   sdk: SpotifyApi,
   playlistId: string,
 ): Promise<PlaylistTrack[]> {
+  // Get the user token from the SDK, but call the endpoint directly:
+  // the SDK (v1.2.0) still uses the deprecated /tracks endpoint, which now
+  // returns 403 after Spotify's Feb/Mar 2026 migration. /items is the replacement.
+  const tokenObj = await sdk.getAccessToken()
+  const token = tokenObj?.access_token
+  if (!token) throw new Error('Not logged in')
+
   const results: PlaylistTrack[] = []
-  const limit = 50
+  const limit = 100
   let offset = 0
 
   for (;;) {
-    const fields = 'items(track(id,name,type,artists(name),album(release_date))),total'
-    const page = await sdk.playlists.getPlaylistItems(
-      playlistId,
-      undefined, // market (optional)
-      fields,
-      limit as 50,
-      offset,
-    )
+    const url =
+      `https://api.spotify.com/v1/playlists/${playlistId}/items` +
+      `?limit=${limit}&offset=${offset}`
 
-    const items = page.items ?? []
-    for (const item of items) {
-      const t = item.track as unknown as {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!res.ok) {
+      if (res.status === 404) throw new Error('Playlist not found.')
+      throw new Error(`Spotify playlist fetch failed: ${res.status}`)
+    }
+
+    const data = await res.json()
+    const items: unknown[] = data.items ?? []
+
+    for (const entry of items) {
+      // New shape: entry.item ; legacy fallback: entry.track
+      const e = entry as { item?: unknown; track?: unknown }
+      const t = (e.item ?? e.track) as {
         id: string | null
         name: string
         type?: string
@@ -54,7 +69,6 @@ export async function fetchPlaylistTracks(
         album: { release_date: string }
       } | null
 
-      // Skip nulls, local tracks (no id), and podcast episodes (type !== 'track').
       if (!t || !t.id) continue
       if (t.type && t.type !== 'track') continue
 
@@ -68,7 +82,7 @@ export async function fetchPlaylistTracks(
       })
     }
 
-    const total = page.total ?? items.length
+    const total: number = data.total ?? items.length
     offset += limit
     if (offset >= total || items.length === 0) break
   }

@@ -1,9 +1,29 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import styled from 'styled-components'
 import { QRCodeSVG } from 'qrcode.react'
+import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
 import { version } from '../package.json'
 import { fetchTrackInfo, type TrackInfo } from './spotify'
+import {
+  createSpotifyApi,
+  clearStoredAuth,
+  hasStoredToken,
+  getRedirectUriForDisplay,
+} from './spotify-auth'
+import { fetchPlaylistTracks, extractPlaylistId } from './spotify-user'
 import { generatePdf } from './pdfGenerator'
+
+// Create the SDK once at module load (mirrors the player app's pattern).
+const sdk: SpotifyApi = createSpotifyApi()
+
+// Auth phase for the (non-blocking) login feature.
+//   'checking' - verifying a stored token / handling the OAuth callback on mount
+//   'out'      - not logged in; regular mode (login optional)
+//   'in'       - logged in and profile confirmed; playlist feature enabled
+type AuthState =
+  | { kind: 'checking' }
+  | { kind: 'out'; error: string | null }
+  | { kind: 'in'; user: string }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -49,6 +69,14 @@ const InputRow = styled.div`
   gap: 10px;
 `
 
+const FieldLabel = styled.label`
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+  width: 110px;
+  flex-shrink: 0;
+`
+
 const Input = styled.input`
   font-size: 0.95rem;
   padding: 8px 12px;
@@ -88,6 +116,71 @@ const ErrorText = styled.div`
   color: #cc0000;
   font-size: 0.85rem;
   margin-top: 2px;
+`
+
+// ─── Auth bar ───────────────────────────────────────────────────────────────
+
+const AuthBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+`
+
+const SpotifyButton = styled.button`
+  font-size: 0.9rem;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 20px;
+  background: #1db954;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: #17a349;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+`
+
+const AuthStatus = styled.span`
+  font-size: 0.85rem;
+  color: #555;
+`
+
+const LogoutLink = styled.button`
+  font-size: 0.8rem;
+  color: #0052cc;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+
+  &:hover {
+    color: #003a99;
+  }
+`
+
+const AuthError = styled.div`
+  color: #cc0000;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  max-width: 680px;
+`
+
+// Wrapper that still receives hover events when the controls inside are
+// disabled, so the "must be logged in" tooltip actually appears.
+const DisabledHint = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
 `
 
 // ─── Song List ────────────────────────────────────────────────────────────────
@@ -399,6 +492,11 @@ function extractTrackId(input: string): string {
   return trimmed
 }
 
+function isRedirectUriError(message: string): boolean {
+  const m = message.toLowerCase()
+  return m.includes('redirect') && m.includes('uri')
+}
+
 function sheetCount(cardCount: number): string {
   if (cardCount === 0) return '0'
   const sheets = cardCount / CARDS_PER_SHEET
@@ -414,6 +512,9 @@ let nextId = 1
 
 function App() {
   const [urlInput, setUrlInput] = useState('')
+  const [playlistInput, setPlaylistInput] = useState('')
+  const [playlistLoading, setPlaylistLoading] = useState(false)
+  const [auth, setAuth] = useState<AuthState>({ kind: 'checking' })
   const [cards, setCards] = useState<CardData[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -434,6 +535,125 @@ function App() {
         return cards[idx] ?? null
       })
     : []
+
+  const loggedIn = auth.kind === 'in'
+
+  // On mount: handle the OAuth callback, or silently validate a stored token.
+  // Non-blocking: regular mode is usable throughout; this only sets logged-in
+  // state when a token is confirmed by a successful profile fetch.
+  useEffect(() => {
+    let cancelled = false
+
+    async function initAuth() {
+      const isCallback = window.location.search.includes('code=')
+      const hadToken = hasStoredToken()
+
+      // Nothing to do: no callback and no stored token => regular mode.
+      if (!isCallback && !hadToken) {
+        if (!cancelled) setAuth({ kind: 'out', error: null })
+        return
+      }
+
+      try {
+        // Triggers the SDK's verify-and-exchange on callback, or uses/refreshes
+        // the stored token otherwise. Profile fetch confirms the token is valid
+        // AND has usable scope.
+        const profile = await sdk.currentUser.profile()
+        if (cancelled) return
+
+        if (isCallback) {
+          // Clean the ?code=... out of the URL.
+          window.history.replaceState({}, '', window.location.pathname)
+        }
+        setAuth({ kind: 'in', user: profile.display_name || profile.email || 'Spotify user' })
+      } catch (e) {
+        if (cancelled) return
+        const message = e instanceof Error ? e.message : String(e)
+
+        // Known SDK quirk: on the very first callback render the PKCE verifier
+        // may not be found; a re-run succeeds. If we're on the callback and it
+        // failed, fall back to 'out' (no lockout) and let the user retry.
+        if (isRedirectUriError(message)) {
+          const uri = getRedirectUriForDisplay()
+          setAuth({
+            kind: 'out',
+            error: `Login failed: redirect URI not registered.\nAdd ${uri} at https://developer.spotify.com/dashboard`,
+          })
+          return
+        }
+
+        // A stale stored token (expired/wrong scope) => clear it, back to out.
+        if (hadToken && !isCallback) {
+          clearStoredAuth()
+          setAuth({ kind: 'out', error: null })
+          return
+        }
+
+        setAuth({ kind: 'out', error: `Login failed: ${message}` })
+      }
+    }
+
+    initAuth()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleLogin = () => {
+    // Begins the redirect to Spotify. On return, the mount effect handles it.
+    sdk.authenticate().catch((e: unknown) => {
+      const message = e instanceof Error ? e.message : String(e)
+      setAuth({ kind: 'out', error: `Login failed: ${message}` })
+    })
+  }
+
+  const handleLogout = () => {
+    clearStoredAuth()
+    setAuth({ kind: 'out', error: null })
+  }
+
+  const handleImportPlaylist = async () => {
+    if (!loggedIn) return
+    const raw = playlistInput.trim()
+    if (!raw) return
+    const playlistId = extractPlaylistId(raw)
+    if (!playlistId) return
+
+    setPlaylistLoading(true)
+    setError(null)
+
+    try {
+      const tracks = await fetchPlaylistTracks(sdk, playlistId)
+
+      // Dedupe by Spotify track ID (derived from each card's spotifyUri).
+      const existing = new Set(cards.map(c => c.spotifyUri.split(':').pop() || ''))
+
+      const newCards: CardData[] = []
+      for (const t of tracks) {
+        if (existing.has(t.trackId)) continue
+        existing.add(t.trackId)
+        newCards.push({
+          id: nextId++,
+          spotifyUri: `spotify:track:${t.trackId}`,
+          trackInfo: t.trackInfo,
+        })
+      }
+
+      if (newCards.length === 0) {
+        setError('No new songs to add (all tracks are already in the list).')
+        return
+      }
+
+      setCards(prev => [...prev, ...newCards])
+      setSelectedId(newCards[0].id)
+      setSongCounter(prev => prev + newCards.length)
+      setPlaylistInput('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to import playlist')
+    } finally {
+      setPlaylistLoading(false)
+    }
+  }
 
   const handleAdd = async () => {
     const raw = urlInput.trim()
@@ -581,10 +801,49 @@ function App() {
     <AppWrapper>
       <VersionLabel>music-cards v{version}</VersionLabel>
 
+      {/* Auth bar (non-blocking; login is optional) */}
+      <AuthBar>
+        {auth.kind === 'checking' && <AuthStatus>Checking login…</AuthStatus>}
+        {auth.kind === 'out' && (
+          <SpotifyButton onClick={handleLogin}>Log in with Spotify</SpotifyButton>
+        )}
+        {auth.kind === 'in' && (
+          <>
+            <AuthStatus>Logged in as: {auth.user}</AuthStatus>
+            <LogoutLink onClick={handleLogout}>Log out</LogoutLink>
+          </>
+        )}
+      </AuthBar>
+      {auth.kind === 'out' && auth.error && <AuthError>{auth.error}</AuthError>}
+
       <TopPanel>
-        {/* URL input row */}
+        {/* Playlist import row (enabled only when logged in) */}
         <InputRow>
+          <FieldLabel htmlFor="playlist-url">Export playlist</FieldLabel>
+          <DisabledHint title={loggedIn ? '' : 'Must be logged in to use the playlist feature'}>
+            <Input
+              id="playlist-url"
+              type="text"
+              value={playlistInput}
+              onChange={e => setPlaylistInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleImportPlaylist() }}
+              placeholder="https://open.spotify.com/playlist/…"
+              disabled={!loggedIn || playlistLoading}
+            />
+            <Button
+              onClick={handleImportPlaylist}
+              disabled={!loggedIn || playlistLoading || !playlistInput.trim()}
+            >
+              {playlistLoading ? 'Importing…' : 'Go'}
+            </Button>
+          </DisabledHint>
+        </InputRow>
+
+        {/* Single song URL input row */}
+        <InputRow>
+          <FieldLabel htmlFor="song-url">Add song</FieldLabel>
           <Input
+            id="song-url"
             ref={inputRef}
             type="text"
             value={urlInput}

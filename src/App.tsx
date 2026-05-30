@@ -519,7 +519,7 @@ function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [displayLayout, setDisplayLayout] = useState(false)
+  const [displayLayout, setDisplayLayout] = useState(true)
   const [songCounter, setSongCounter] = useState(1)
   const [pdfLoading, setPdfLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)

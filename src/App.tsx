@@ -466,6 +466,14 @@ function App() {
     if (selectedId === id) setSelectedId(null)
   }
 
+  const updateCardField = (id: number, field: 'name' | 'artist' | 'year', value: string) => {
+    setCards(prev => prev.map(c =>
+      c.id === id
+        ? { ...c, trackInfo: { ...c.trackInfo, [field]: value } }
+        : c
+    ))
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') handleAdd()
   }
@@ -491,9 +499,21 @@ function App() {
   const renderFrontCard = (card: CardData, attrs?: Record<string, string>) => (
     <Card key={`detail-${card.id}`} {...attrs}>
       <CardNote>♫</CardNote>
-      <SongName contentEditable suppressContentEditableWarning>{card.trackInfo.name}</SongName>
-      <ArtistName contentEditable suppressContentEditableWarning>{card.trackInfo.artist}</ArtistName>
-      <YearText contentEditable suppressContentEditableWarning>{card.trackInfo.year}</YearText>
+      <SongName
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={e => updateCardField(card.id, 'name', e.currentTarget.textContent ?? '')}
+      >{card.trackInfo.name}</SongName>
+      <ArtistName
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={e => updateCardField(card.id, 'artist', e.currentTarget.textContent ?? '')}
+      >{card.trackInfo.artist}</ArtistName>
+      <YearText
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={e => updateCardField(card.id, 'year', e.currentTarget.textContent ?? '')}
+      >{card.trackInfo.year}</YearText>
     </Card>
   )
 

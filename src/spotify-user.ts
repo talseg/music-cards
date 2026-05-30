@@ -25,14 +25,14 @@ export function extractPlaylistId(input: string): string {
 }
 
 // Fetch all tracks from a playlist, following pagination. Requires a logged-in
-// SDK instance. Skips local/unavailable items and non-track entries (episodes).
+// SDK instance — but calls the endpoint directly rather than via the SDK: the
+// SDK (v1.2.0) still uses the deprecated /tracks endpoint, which returns 403
+// after Spotify's Feb/Mar 2026 migration. /items is the replacement, and the
+// response shape renamed tracks -> items and track -> item.
 export async function fetchPlaylistTracks(
   sdk: SpotifyApi,
   playlistId: string,
 ): Promise<PlaylistTrack[]> {
-  // Get the user token from the SDK, but call the endpoint directly:
-  // the SDK (v1.2.0) still uses the deprecated /tracks endpoint, which now
-  // returns 403 after Spotify's Feb/Mar 2026 migration. /items is the replacement.
   const tokenObj = await sdk.getAccessToken()
   const token = tokenObj?.access_token
   if (!token) throw new Error('Not logged in')

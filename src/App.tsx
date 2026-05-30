@@ -661,6 +661,13 @@ function App() {
     const trackId = extractTrackId(raw)
     if (!trackId) return
 
+    // Reject duplicates (compare by Spotify track ID derived from spotifyUri).
+    const existing = new Set(cards.map(c => c.spotifyUri.split(':').pop() || ''))
+    if (existing.has(trackId)) {
+      setError('That song is already in the list.')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -824,6 +831,7 @@ function App() {
             <Input
               id="playlist-url"
               type="text"
+              autoComplete="off"
               value={playlistInput}
               onChange={e => setPlaylistInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleImportPlaylist() }}
@@ -846,6 +854,7 @@ function App() {
             id="song-url"
             ref={inputRef}
             type="text"
+            autoComplete="off"
             value={urlInput}
             onChange={e => setUrlInput(e.target.value)}
             onKeyDown={handleKeyDown}

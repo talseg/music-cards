@@ -794,7 +794,7 @@ function App() {
   const renderBackCard = (card: CardData, attrs?: Record<string, string>) => (
     <Card key={`qr-${card.id}`} {...attrs}>
       <QrCardContent>
-        <GameCardLabel>My Song ©</GameCardLabel>
+        <GameCardLabel>My Song Cards</GameCardLabel>
         <QRCodeSVG value={card.spotifyUri} size={120} />
       </QrCardContent>
     </Card>

@@ -1,14 +1,14 @@
 {
   "name": "music-cards",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "clean": "powershell -Command \"Remove-Item -r node_modules, dist, *.tsbuildinfo\""
+    "clean": "powershell -Command \"Remove-Item -Recurse -Force -ErrorAction SilentlyContinue node_modules, dist, *.tsbuildinfo\""
   },
   "dependencies": {
     "@spotify/web-api-ts-sdk": "^1.2.0",

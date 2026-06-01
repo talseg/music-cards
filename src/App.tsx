@@ -57,16 +57,10 @@ const TopPanel = styled.div`
   max-width: 680px;
 `
 
-const TopPanelHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-`
-
 const VersionLabel = styled.div`
   font-size: 0.7rem;
   color: #aaa;
+  margin-left: auto;
 `
 
 const InputRow = styled.div`
@@ -132,6 +126,8 @@ const AuthBar = styled.div`
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+  width: 100%;
+  max-width: 680px;
 `
 
 const SpotifyButton = styled.button`
@@ -295,27 +291,12 @@ const SheetCounter = styled.div`
   color: #888;
   white-space: nowrap;
   line-height: 1;
+  padding-left: 120px;
 `
 
-const SongCounter = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 4px 8px;
-`
-
-const SongCounterLabel = styled.span`
-  font-size: 0.78rem;
-  color: #888;
-  white-space: nowrap;
-`
 
 const SongCounterValue = styled.input`
-  width: 44px;
+  width: 34px;
   font-size: 0.95rem;
   font-weight: 700;
   color: #333;
@@ -351,26 +332,7 @@ const CounterBtn = styled.button`
   }
 `
 
-// ─── Add row with PDF inline ──────────────────────────────────────────────────
-
-const AddRowWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`
-
-const AddRowMain = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`
-
-const AddRowSub = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-left: 120px; /* align with input (label width = 110px + gap 10px) */
-`
+// ─── Add row ──────────────────────────────────────────────────────────────────
 
 // ─── Card Preview ─────────────────────────────────────────────────────────────
 
@@ -417,11 +379,24 @@ const ScrollBtn = styled.button`
 
 const CardGrid = styled.div`
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
+  gap: 10px;
+
+  @media print {
+    gap: 0;
+  }
 `
 
-const CardRow = styled.div`
+const CardPairWrapper = styled.div<{ $selected: boolean }>`
   display: flex;
+  flex-direction: column;
+  outline: ${p => p.$selected ? '3px solid #1db954' : 'none'};
+  outline-offset: 0px;
+  border-radius: ${CARD_RADIUS_PX}px;
+
+  @media print {
+    outline: none;
+  }
 `
 
 const Card = styled.div`
@@ -440,16 +415,6 @@ const Card = styled.div`
 const CardPlaceholder = styled(Card)`
   border: 1px dashed #ccc;
   background: #fafafa;
-`
-
-const CardWrapper = styled.div<{ $selected: boolean }>`
-  outline: ${p => p.$selected ? '2px solid #1db954' : 'none'};
-  outline-offset: 2px;
-  border-radius: ${CARD_RADIUS_PX}px;
-
-  @media print {
-    outline: none;
-  }
 `
 
 const CardNote = styled.div`
@@ -768,27 +733,25 @@ function App() {
 
   // ─── Card renderers ──────────────────────────────────────────────────────
 
-  const renderFrontCard = (card: CardData, selected: boolean, attrs?: Record<string, string>) => (
-    <CardWrapper key={`detail-wrap-${card.id}`} $selected={selected}>
-      <Card {...attrs}>
-        <CardNote>♫</CardNote>
-        <SongName
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={e => updateCardField(card.id, 'name', e.currentTarget.textContent ?? '')}
-        >{card.trackInfo.name}</SongName>
-        <ArtistName
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={e => updateCardField(card.id, 'artist', e.currentTarget.textContent ?? '')}
-        >{card.trackInfo.artist}</ArtistName>
-        <YearText
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={e => updateCardField(card.id, 'year', e.currentTarget.textContent ?? '')}
-        >{card.trackInfo.year}</YearText>
-      </Card>
-    </CardWrapper>
+  const renderFrontCard = (card: CardData, attrs?: Record<string, string>) => (
+    <Card {...attrs}>
+      <CardNote>♫</CardNote>
+      <SongName
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={e => updateCardField(card.id, 'name', e.currentTarget.textContent ?? '')}
+      >{card.trackInfo.name}</SongName>
+      <ArtistName
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={e => updateCardField(card.id, 'artist', e.currentTarget.textContent ?? '')}
+      >{card.trackInfo.artist}</ArtistName>
+      <YearText
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={e => updateCardField(card.id, 'year', e.currentTarget.textContent ?? '')}
+      >{card.trackInfo.year}</YearText>
+    </Card>
   )
 
   const renderBackCard = (card: CardData, attrs?: Record<string, string>) => (
@@ -800,6 +763,13 @@ function App() {
     </Card>
   )
 
+  const renderCardPair = (card: CardData, selected: boolean) => (
+    <CardPairWrapper key={`pair-${card.id}`} $selected={selected}>
+      {renderFrontCard(card, { 'data-pdf-detail': String(card.id) })}
+      {renderBackCard(card, { 'data-pdf-qr': String(card.id) })}
+    </CardPairWrapper>
+  )
+
   // ─── Preview ─────────────────────────────────────────────────────────────
 
   const renderPreview = () => {
@@ -807,20 +777,16 @@ function App() {
 
     return (
       <CardGrid>
-        <CardRow>
-          {sheetCards.map((card, i) =>
-            card
-              ? renderFrontCard(card, card.id === selectedId, { 'data-pdf-detail': String(card.id) })
-              : <CardPlaceholder key={`ph-f-${i}`} />
-          )}
-        </CardRow>
-        <CardRow>
-          {sheetCards.map((card, i) =>
-            card
-              ? renderBackCard(card, { 'data-pdf-qr': String(card.id) })
-              : <CardPlaceholder key={`ph-b-${i}`} />
-          )}
-        </CardRow>
+        {sheetCards.map((card, i) =>
+          card
+            ? renderCardPair(card, card.id === selectedId)
+            : (
+              <CardPairWrapper key={`ph-${i}`} $selected={false}>
+                <CardPlaceholder />
+                <CardPlaceholder />
+              </CardPairWrapper>
+            )
+        )}
       </CardGrid>
     )
   }
@@ -837,7 +803,7 @@ function App() {
 
   return (
     <AppWrapper>
-      {/* Auth bar (non-blocking; login is optional) */}
+      {/* Auth bar: login status + Generate PDF + counter + sheets + version */}
       <AuthBar>
         {auth.kind === 'checking' && <AuthStatus>Checking login…</AuthStatus>}
         {auth.kind === 'out' && (
@@ -849,36 +815,51 @@ function App() {
             <LogoutLink onClick={handleLogout}>Log out</LogoutLink>
           </>
         )}
+        <Button
+          onClick={handleGeneratePdf}
+          disabled={cards.length === 0 || pdfLoading}
+        >
+          {pdfLoading ? 'Generating…' : 'Generate PDF'}
+        </Button>
+        <CounterBtn onClick={() => setSongCounter(p => Math.max(1, p - 1))}>−</CounterBtn>
+        <SongCounterValue
+          type="number"
+          value={songCounter}
+          min={1}
+          onChange={e => {
+            const v = parseInt(e.target.value, 10)
+            if (!isNaN(v) && v >= 1) setSongCounter(v)
+          }}
+          style={{ width: 34, fontWeight: 700, fontSize: '0.95rem', border: '1px solid #ddd', borderRadius: 4, background: '#f0f0f0', textAlign: 'center', padding: '4px 0' }}
+        />
+        <CounterBtn onClick={() => setSongCounter(p => p + 1)}>+</CounterBtn>
+        <SheetCounter style={{ paddingLeft: 0 }}>
+          {cards.length > 0
+            ? `${sheetCount(cards.length)} sheet${parseFloat(sheetCount(cards.length)) !== 1 ? 's' : ''}`
+            : ''}
+        </SheetCounter>
+        <VersionLabel>music-cards v{version}</VersionLabel>
       </AuthBar>
       {auth.kind === 'out' && auth.error && <AuthError>{auth.error}</AuthError>}
 
       <TopPanel>
-        {/* Header row: hint text on left, version on right */}
+        {/* Redirect URI hint when logged out */}
         {auth.kind === 'out' && (
-          <TopPanelHeader>
-            <AuthError style={{ margin: 0, fontSize: '0.78rem', color: '#aaa' }}>
-              Make sure{' '}
-              <span style={{ fontFamily: 'monospace', color: '#888' }}>
-                {getRedirectUriForDisplay()}
-              </span>{' '}
-              is added in your{' '}
-              <a
-                href="https://developer.spotify.com/dashboard"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#0052cc' }}
-              >
-                Spotify Developer Dashboard
-              </a>
-            </AuthError>
-            <VersionLabel>music-cards v{version}</VersionLabel>
-          </TopPanelHeader>
-        )}
-        {auth.kind !== 'out' && (
-          <TopPanelHeader>
-            <div />
-            <VersionLabel>music-cards v{version}</VersionLabel>
-          </TopPanelHeader>
+          <AuthError style={{ margin: 0, fontSize: '0.78rem', color: '#aaa' }}>
+            Make sure{' '}
+            <span style={{ fontFamily: 'monospace', color: '#888' }}>
+              {getRedirectUriForDisplay()}
+            </span>{' '}
+            is added in your{' '}
+            <a
+              href="https://developer.spotify.com/dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#0052cc' }}
+            >
+              Spotify Developer Dashboard
+            </a>
+          </AuthError>
         )}
 
         {/* Playlist import row */}
@@ -904,53 +885,24 @@ function App() {
           </DisabledHint>
         </InputRow>
 
-        {/* Add song row + PDF button inline + Song counter below */}
-        <AddRowWrapper>
-          <AddRowMain>
-            <FieldLabel htmlFor="song-url">Add song</FieldLabel>
-            <Input
-              id="song-url"
-              ref={inputRef}
-              type="text"
-              autoComplete="off"
-              value={urlInput}
-              onChange={e => setUrlInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="https://open.spotify.com/track/…"
-              disabled={loading}
-            />
-            <Button $primary onClick={handleAdd} disabled={loading || !urlInput.trim()}>
-              {loading ? 'Loading…' : '+ Add'}
-            </Button>
-            <Button
-              onClick={handleGeneratePdf}
-              disabled={cards.length === 0 || pdfLoading}
-            >
-              {pdfLoading ? 'Generating…' : 'Generate PDF'}
-            </Button>
-          </AddRowMain>
-          <AddRowSub>
-            <SheetCounter>
-              {cards.length > 0
-                ? `${sheetCount(cards.length)} sheet${parseFloat(sheetCount(cards.length)) !== 1 ? 's' : ''}`
-                : ''}
-            </SheetCounter>
-            <SongCounter>
-              <SongCounterLabel>Song #</SongCounterLabel>
-              <CounterBtn onClick={() => setSongCounter(p => Math.max(1, p - 1))}>−</CounterBtn>
-              <SongCounterValue
-                type="number"
-                value={songCounter}
-                min={1}
-                onChange={e => {
-                  const v = parseInt(e.target.value, 10)
-                  if (!isNaN(v) && v >= 1) setSongCounter(v)
-                }}
-              />
-              <CounterBtn onClick={() => setSongCounter(p => p + 1)}>+</CounterBtn>
-            </SongCounter>
-          </AddRowSub>
-        </AddRowWrapper>
+        {/* Add song row */}
+        <InputRow>
+          <FieldLabel htmlFor="song-url">Add song</FieldLabel>
+          <Input
+            id="song-url"
+            ref={inputRef}
+            type="text"
+            autoComplete="off"
+            value={urlInput}
+            onChange={e => setUrlInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="https://open.spotify.com/track/…"
+            disabled={loading}
+          />
+          <Button $primary onClick={handleAdd} disabled={loading || !urlInput.trim()}>
+            {loading ? 'Loading…' : 'Add'}
+          </Button>
+        </InputRow>
 
         {error && <ErrorText>{error}</ErrorText>}
 
@@ -1009,7 +961,7 @@ function App() {
       <HiddenCards aria-hidden="true">
         {hiddenCards.map(card => (
           <div key={card.id}>
-            {renderFrontCard(card, false, { 'data-pdf-detail': String(card.id) })}
+            {renderFrontCard(card, { 'data-pdf-detail': String(card.id) })}
             {renderBackCard(card, { 'data-pdf-qr': String(card.id) })}
           </div>
         ))}

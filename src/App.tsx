@@ -387,12 +387,13 @@ const CardGrid = styled.div`
   }
 `
 
-const CardPairWrapper = styled.div<{ $selected: boolean }>`
+const CardPairWrapper = styled.div<{ $selected: boolean; $clickable?: boolean }>`
   display: flex;
   flex-direction: column;
   outline: ${p => p.$selected ? '3px solid #1db954' : 'none'};
   outline-offset: 0px;
   border-radius: ${CARD_RADIUS_PX}px;
+  cursor: ${p => p.$clickable ? 'pointer' : 'default'};
 
   @media print {
     outline: none;
@@ -548,6 +549,9 @@ function App() {
   })
   const [pdfLoading, setPdfLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Maps each card id to its <ListItem> DOM node, so we can scroll the
+  // selected song into view in the list whenever the selection changes.
+  const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   const selectedCard = cards.find(c => c.id === selectedId) ?? null
   const selectedIndex = selectedCard ? cards.findIndex(c => c.id === selectedId) : -1
@@ -567,6 +571,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem('music-cards:songCounter', String(songCounter))
   }, [songCounter])
+
+  // Whenever the selected song changes, make sure its row is visible in the
+  // list. Covers adding a song, clicking a preview card, and the sheet arrows.
+  useEffect(() => {
+    if (selectedId === null) return
+    const node = listItemRefs.current.get(selectedId)
+    node?.scrollIntoView({ block: 'nearest' })
+  }, [selectedId])
 
   // On mount: handle the OAuth callback, or silently validate a stored token.
   useEffect(() => {
@@ -795,7 +807,12 @@ function App() {
   )
 
   const renderCardPair = (card: CardData, selected: boolean) => (
-    <CardPairWrapper key={`pair-${card.id}`} $selected={selected}>
+    <CardPairWrapper
+      key={`pair-${card.id}`}
+      $selected={selected}
+      $clickable
+      onClick={() => setSelectedId(card.id)}
+    >
       {renderFrontCard(card, { 'data-pdf-detail': String(card.id) })}
       {renderBackCard(card, { 'data-pdf-qr': String(card.id) })}
     </CardPairWrapper>
@@ -945,6 +962,10 @@ function App() {
               : cards.map((card, idx) => (
                 <ListItem
                   key={card.id}
+                  ref={node => {
+                    if (node) listItemRefs.current.set(card.id, node)
+                    else listItemRefs.current.delete(card.id)
+                  }}
                   $selected={card.id === selectedId}
                   onClick={() => setSelectedId(card.id)}
                 >

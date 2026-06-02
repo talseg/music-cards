@@ -508,6 +508,17 @@ function isRedirectUriError(message: string): boolean {
   return m.includes('redirect') && m.includes('uri')
 }
 
+// The Spotify SDK throws this on the OAuth callback when the PKCE verifier it
+// stored before redirecting is missing from the cache. This is a transient
+// stale-state condition (e.g. the callback landed in a fresh page/context, or
+// a previous attempt left a dangling code in the URL). Recover silently by
+// clearing any partial auth state and returning to a clean logged-out state,
+// rather than surfacing a confusing error to the user.
+function isMissingVerifierError(message: string): boolean {
+  const m = message.toLowerCase()
+  return m.includes('verifier') && (m.includes('no ') || m.includes('not found') || m.includes('cache'))
+}
+
 function sheetCount(cardCount: number): string {
   if (cardCount === 0) return '0'
   const sheets = cardCount / CARDS_PER_SHEET
@@ -580,6 +591,18 @@ function App() {
             kind: 'out',
             error: `Login failed: redirect URI not registered.\nAdd ${uri} at https://developer.spotify.com/dashboard`,
           })
+          return
+        }
+
+        // Transient PKCE verifier-not-found on the callback: recover silently.
+        // Strip the stale ?code=... from the URL and clear any partial state so
+        // the user lands on a clean logged-out screen and can just retry login.
+        if (isMissingVerifierError(message)) {
+          clearStoredAuth()
+          if (isCallback) {
+            window.history.replaceState({}, '', window.location.pathname)
+          }
+          setAuth({ kind: 'out', error: null })
           return
         }
 

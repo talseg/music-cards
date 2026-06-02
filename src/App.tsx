@@ -541,7 +541,11 @@ function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [songCounter, setSongCounter] = useState(1)
+  const [songCounter, setSongCounter] = useState(() => {
+    const stored = localStorage.getItem('music-cards:songCounter')
+    const parsed = Number(stored)
+    return stored && Number.isFinite(parsed) && parsed >= 1 ? parsed : 1
+  })
   const [pdfLoading, setPdfLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -559,6 +563,10 @@ function App() {
     : []
 
   const loggedIn = auth.kind === 'in'
+
+  useEffect(() => {
+    localStorage.setItem('music-cards:songCounter', String(songCounter))
+  }, [songCounter])
 
   // On mount: handle the OAuth callback, or silently validate a stored token.
   useEffect(() => {

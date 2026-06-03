@@ -520,6 +520,71 @@ function isMissingVerifierError(message: string): boolean {
   return m.includes('verifier') && (m.includes('no ') || m.includes('not found') || m.includes('cache'))
 }
 
+// Resolve the initial auth state exactly once per page load.
+//
+// The OAuth token exchange (consuming the one-time ?code=... + PKCE verifier)
+// happens inside the first SDK call below, and an authorization code is
+// single-use. Under React StrictMode the mount effect runs twice, so we must
+// guarantee this work runs only once and that BOTH effect invocations observe
+// the same result. We do that by memoizing the promise at module scope: the
+// first caller starts the work, the second reuses the in-flight/cached promise.
+// The effect then applies the resolved state (guarded by its own cancel flag),
+// so the live mount always leaves the 'checking' state.
+let initAuthPromise: Promise<AuthState> | null = null
+
+async function resolveInitAuth(): Promise<AuthState> {
+  const isCallback = window.location.search.includes('code=')
+  const hadToken = hasStoredToken()
+
+  if (!isCallback && !hadToken) {
+    return { kind: 'out', error: null }
+  }
+
+  try {
+    const profile = await sdk.currentUser.profile()
+
+    if (isCallback) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+    return { kind: 'in', user: profile.display_name || profile.email || 'Spotify user' }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+
+    if (isRedirectUriError(message)) {
+      const uri = getRedirectUriForDisplay()
+      return {
+        kind: 'out',
+        error: `Login failed: redirect URI not registered.\nAdd ${uri} at https://developer.spotify.com/dashboard`,
+      }
+    }
+
+    // Transient PKCE verifier-not-found on the callback: recover silently.
+    // Strip the stale ?code=... from the URL and clear any partial state so
+    // the user lands on a clean logged-out screen and can just retry login.
+    if (isMissingVerifierError(message)) {
+      clearStoredAuth()
+      if (isCallback) {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+      return { kind: 'out', error: null }
+    }
+
+    if (hadToken && !isCallback) {
+      clearStoredAuth()
+      return { kind: 'out', error: null }
+    }
+
+    return { kind: 'out', error: `Login failed: ${message}` }
+  }
+}
+
+function getInitAuth(): Promise<AuthState> {
+  if (!initAuthPromise) {
+    initAuthPromise = resolveInitAuth()
+  }
+  return initAuthPromise
+}
+
 function sheetCount(cardCount: number): string {
   if (cardCount === 0) return '0'
   const sheets = cardCount / CARDS_PER_SHEET
@@ -581,62 +646,15 @@ function App() {
   }, [selectedId])
 
   // On mount: handle the OAuth callback, or silently validate a stored token.
+  // The actual work is memoized at module scope (see getInitAuth), so it runs
+  // exactly once even though StrictMode invokes this effect twice in dev. Both
+  // invocations await the same promise; whichever is still mounted applies the
+  // result, so the UI always leaves the 'checking' state.
   useEffect(() => {
     let cancelled = false
-
-    async function initAuth() {
-      const isCallback = window.location.search.includes('code=')
-      const hadToken = hasStoredToken()
-
-      if (!isCallback && !hadToken) {
-        if (!cancelled) setAuth({ kind: 'out', error: null })
-        return
-      }
-
-      try {
-        const profile = await sdk.currentUser.profile()
-        if (cancelled) return
-
-        if (isCallback) {
-          window.history.replaceState({}, '', window.location.pathname)
-        }
-        setAuth({ kind: 'in', user: profile.display_name || profile.email || 'Spotify user' })
-      } catch (e) {
-        if (cancelled) return
-        const message = e instanceof Error ? e.message : String(e)
-
-        if (isRedirectUriError(message)) {
-          const uri = getRedirectUriForDisplay()
-          setAuth({
-            kind: 'out',
-            error: `Login failed: redirect URI not registered.\nAdd ${uri} at https://developer.spotify.com/dashboard`,
-          })
-          return
-        }
-
-        // Transient PKCE verifier-not-found on the callback: recover silently.
-        // Strip the stale ?code=... from the URL and clear any partial state so
-        // the user lands on a clean logged-out screen and can just retry login.
-        if (isMissingVerifierError(message)) {
-          clearStoredAuth()
-          if (isCallback) {
-            window.history.replaceState({}, '', window.location.pathname)
-          }
-          setAuth({ kind: 'out', error: null })
-          return
-        }
-
-        if (hadToken && !isCallback) {
-          clearStoredAuth()
-          setAuth({ kind: 'out', error: null })
-          return
-        }
-
-        setAuth({ kind: 'out', error: `Login failed: ${message}` })
-      }
-    }
-
-    initAuth()
+    getInitAuth().then(result => {
+      if (!cancelled) setAuth(result)
+    })
     return () => { cancelled = true }
   }, [])
 

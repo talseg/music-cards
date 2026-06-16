@@ -1,6 +1,3 @@
-const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-const CLIENT_SECRET = import.meta.env.SPOTIFY_CLIENT_SECRET
-
 let accessToken: string | null = null
 let tokenExpiry = 0
 
@@ -9,12 +6,9 @@ async function getAccessToken(): Promise<string> {
     return accessToken
   }
 
-  const credentials = btoa(`${CLIENT_ID}:${CLIENT_SECRET}`)
-
   const response = await fetch('/api/spotify/token', {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${credentials}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: 'grant_type=client_credentials',

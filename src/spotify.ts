@@ -1,5 +1,5 @@
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-const CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
+const CLIENT_SECRET = import.meta.env.SPOTIFY_CLIENT_SECRET
 
 let accessToken: string | null = null
 let tokenExpiry = 0

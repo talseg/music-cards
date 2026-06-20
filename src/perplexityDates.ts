@@ -15,11 +15,7 @@
 const MODEL = 'google/gemini-3.1-flash-lite'
 
 export interface SuggestedYearResult {
-  // Four-digit year as a string (e.g. "1975"), or null if the response had no
-  // parseable year. Caller decides how to surface null (we show "Error").
-  year: string | null
-  // Exact cost of this single request in USD, read from usage.cost.total_cost.
-  // 0 if the field is missing for any reason.
+  year: 'Error' | 'Unknown' | number
   cost: number
 }
 
@@ -65,9 +61,9 @@ function extractText(data: unknown): string {
 }
 
 // First standalone 4-digit year in the text (1000–2999). Returns null if none.
-function parseYear(text: string): string | null {
+function parseYear(text: string): number | null {
   const match = text.match(/\b([12]\d{3})\b/)
-  return match ? match[1] : null
+  return match ? Number(match[1]) : null
 }
 
 function extractCost(data: unknown): number {
@@ -100,8 +96,8 @@ export async function getSuggestedYear(
 
   const data = await response.json()
   const text = extractText(data)
-  return {
-    year: /\bunknown\b/i.test(text) ? 'Unknown' : parseYear(text),
-    cost: extractCost(data),
-  }
+  const year: SuggestedYearResult['year'] = /\bunknown\b/i.test(text)
+    ? 'Unknown'
+    : (parseYear(text) ?? 'Error')
+  return { year, cost: extractCost(data) }
 }

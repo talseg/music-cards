@@ -57,7 +57,7 @@ interface CardData {
 // an entry here, so deleting + re-adding a song resets it to unqueried. `year`
 // holds the parsed 4-digit year, or the literal 'Error' marker on a failed call.
 interface AiDate {
-  year: string
+  year: 'Error' | 'Unknown' | number
   cost: number
 }
 
@@ -867,7 +867,7 @@ function App() {
           )
           setAiDates(prev => {
             const next = new Map(prev)
-            next.set(id, { year: year ?? 'Error', cost })
+            next.set(id, { year, cost })
             return next
           })
           if (cost > 0) setTotalCost(prev => prev + cost)
@@ -1112,9 +1112,9 @@ function App() {
               ? <ListEmpty>No songs yet — paste a Spotify URL above and press Add</ListEmpty>
               : cards.map((card, idx) => {
                 const ai = DATES_ENABLED ? aiDates.get(trackIdOf(card)) : undefined
-                const aiError = ai?.year === 'Error' || ai?.year === 'Unknown'
+                const aiError = typeof ai?.year === 'string'
                 const aiConflict = !!ai && !aiError &&
-                  ai.year.trim() !== card.trackInfo.year.trim()
+                  String(ai.year) !== card.trackInfo.year.trim()
                 return (
                 <ListItem
                   key={card.id}

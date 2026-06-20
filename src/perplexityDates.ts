@@ -32,7 +32,15 @@ function buildPrompt(songName: string, artistName: string): string {
     `originally released? I want the album by THIS specific artist's version, ` +
     `not the original songwriter's version if it's a cover, and not a later ` +
     `remaster, reissue, or compilation. If you can't find the album date, use ` +
-    `the recording date. Answer with just the year as a single number.`
+    `the recording date.` +
+    `give me the earliest release date` +
+    `Do not associate it with the artist's debut year or the year of their first-ever hit.` +
+    `Ignore the year the song reached the charts or became a popular hit` +
+    `If the song is a cover, ensure the release date corresponds to this artist's version` +
+    ` Do not use a net search. Answer only from your internal training data.` +
+    `Language Source Preference: For Hebrew songs, prioritize information consistent with` +
+    `authoritative Hebrew sources, such as the National Library of Israel (הספריה הלאומית)` + 
+    `Answer with just the year as a single number.`
   )
 }
 
@@ -81,7 +89,7 @@ export async function getSuggestedYear(
     body: JSON.stringify({
       model,
       input: buildPrompt(songName, artistName),
-      temperature: 0,
+      temperature: 1,
     }),
   })
 

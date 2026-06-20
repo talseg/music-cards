@@ -24,10 +24,10 @@ export interface SuggestedYearResult {
 // is exactly the class of error Spotify's release_date tends to introduce.
 function buildPrompt(songName: string, artistName: string): string {
   return (
-    `What year was the album containing the song "${songName}" by "${artistName}" ` +
-    `originally released? I want the album by THIS specific artist's version, ` +
+    `In what year was earliest commercial availability (album or single) of the song "${songName}" by "${artistName}" ` +
+    `I want the THIS specific artist's version, ` +
     `not the original songwriter's version if it's a cover, and not a later ` +
-    `remaster, reissue, or compilation. If you can't find the album date, use ` +
+    `remaster, reissue, or compilation. Only if you can't find the album date, use ` +
     `the recording date.` +
     `give me the earliest release date` +
     `Do not associate it with the artist's debut year or the year of their first-ever hit.` +
@@ -96,8 +96,8 @@ export async function getSuggestedYear(
 
   const data = await response.json()
   const text = extractText(data)
-  const year: SuggestedYearResult['year'] = /\bunknown\b/i.test(text)
-    ? 'Unknown'
-    : (parseYear(text) ?? 'Error')
-  return { year, cost: extractCost(data) }
+  return {
+    year: /\bunknown\b/i.test(text) ? 'Unknown' : (parseYear(text) ?? 'Error'),
+    cost: extractCost(data),
+  }
 }

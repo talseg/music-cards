@@ -75,7 +75,7 @@ const TopPanel = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 680px;
+  max-width: 800px;
 `
 
 const VersionLabel = styled.div`
@@ -148,7 +148,7 @@ const AuthBar = styled.div`
   margin-bottom: 16px;
   flex-wrap: wrap;
   width: 100%;
-  max-width: 680px;
+  max-width: 800px;
 `
 
 const SpotifyButton = styled.button`

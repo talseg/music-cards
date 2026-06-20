@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const clientId = env.VITE_SPOTIFY_CLIENT_ID
   const clientSecret = env.SPOTIFY_CLIENT_SECRET
+  const perplexityKey = env.PERPLEXITY_API_KEY
 
   return {
     plugins: [react(), basicSsl()],
@@ -35,6 +36,20 @@ export default defineConfig(({ mode }) => {
           target: 'https://api.spotify.com/v1',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/spotify/, ''),
+        },
+        '/api/perplexity': {
+          target: 'https://api.perplexity.ai',
+          changeOrigin: true,
+          rewrite: () => '/v1/agent',
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq) => {
+              // Attach the Perplexity API key server-side so the secret never
+              // reaches the browser bundle. The browser sends only { model, input }.
+              if (perplexityKey) {
+                proxyReq.setHeader('Authorization', `Bearer ${perplexityKey}`)
+              }
+            })
+          },
         },
       },
     },

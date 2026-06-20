@@ -7,6 +7,7 @@ import { fetchTrackInfo, type TrackInfo } from './spotify'
 import { createAuth, type InitAuthResult } from './auth/spotify-auth'
 import { fetchPlaylistTracks, extractPlaylistId } from './spotify-user'
 import { generatePdf } from './pdfGenerator'
+import { getSuggestedYear } from './perplexityDates'
 
 // Create the auth bundle once at module load. The shared module (src/auth) is
 // app-agnostic; everything app-specific about auth lives in this config.
@@ -35,12 +36,29 @@ const CARD_WIDTH_PX = 159
 const CARD_HEIGHT_PX = 222
 const CARD_RADIUS_PX = 8
 
+// Public, browser-readable flag (separate from the proxy-only secret key).
+// The "Get AI dates" feature is fail-closed: hidden unless this is exactly
+// 'true'. Anything else (absent / other value) leaves the feature off.
+const DATES_ENABLED = import.meta.env.VITE_DATES_ENABLED === 'true'
+
+// localStorage key for the lifetime running total of AI-query spend (USD).
+const TOTAL_COST_KEY = 'music-cards:aiDatesTotalCost'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CardData {
   id: number
   spotifyUri: string
   trackInfo: TrackInfo
+}
+
+// Transient AI-date result for one song, keyed by Spotify track id. Deliberately
+// NOT part of CardData and NOT persisted: a song is "already queried" iff it has
+// an entry here, so deleting + re-adding a song resets it to unqueried. `year`
+// holds the parsed 4-digit year, or the literal 'Error' marker on a failed call.
+interface AiDate {
+  year: string
+  cost: number
 }
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -263,6 +281,67 @@ const ListItemYear = styled.span`
   width: 36px;
   text-align: right;
 `
+
+// Fixed-width numeric columns for the AI-dates feature. Widths match the header
+// cells below so columns line up. `$conflict` paints the AI year red when it
+// disagrees with the Spotify year (needs manual attention).
+const ListItemSpotify = styled.span`
+  font-size: 0.78rem;
+  color: #888;
+  flex-shrink: 0;
+  width: 44px;
+  text-align: right;
+`
+
+const ListItemAi = styled.span<{ $conflict: boolean; $error: boolean }>`
+  font-size: 0.78rem;
+  color: ${p => (p.$error || p.$conflict) ? '#cc0000' : '#888'};
+  font-weight: ${p => (p.$error || p.$conflict) ? 600 : 400};
+  flex-shrink: 0;
+  width: 44px;
+  text-align: right;
+`
+
+const ListItemCard = styled.span`
+  font-size: 0.78rem;
+  color: #555;
+  flex-shrink: 0;
+  width: 44px;
+  text-align: right;
+`
+
+const ListItemCost = styled.span`
+  font-size: 0.72rem;
+  color: #aaa;
+  flex-shrink: 0;
+  width: 48px;
+  text-align: right;
+`
+
+// Header row above the song list. Column widths mirror the cells in each
+// ListItem so labels sit over their values.
+const ListHeader = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  gap: 8px;
+  background: #f7f7f7;
+  border-bottom: 1px solid #e4e4e4;
+  font-size: 0.68rem;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  user-select: none;
+`
+
+const HeadNum = styled.span`width: 22px; flex-shrink: 0; text-align: right;`
+const HeadName = styled.span`flex: 1;`
+const HeadArtist = styled.span`width: 160px; flex-shrink: 0;`
+const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
+const HeadAi = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
+const HeadCard = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
+const HeadCost = styled.span`width: 48px; flex-shrink: 0; text-align: right;`
+const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
 
 const DeleteBtn = styled.button`
   font-size: 1rem;
@@ -563,6 +642,21 @@ function App() {
     return stored && Number.isFinite(parsed) && parsed >= 1 ? parsed : 1
   })
   const [pdfLoading, setPdfLoading] = useState(false)
+  // AI release-year results, keyed by Spotify track id. Presence of an entry =
+  // "already queried" (so the same song isn't queried twice). Reset naturally
+  // when a song is deleted + re-added, since the key disappears with the card.
+  const [aiDates, setAiDates] = useState<Map<string, AiDate>>(new Map())
+  const [aiLoading, setAiLoading] = useState(false)
+  // Lifetime running total of AI-query spend (USD), persisted to localStorage so
+  // it survives reloads. Editable by hand to sync across ports/machines.
+  const [totalCost, setTotalCost] = useState(() => {
+    const stored = localStorage.getItem(TOTAL_COST_KEY)
+    const parsed = Number(stored)
+    return stored && Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+  })
+  // Free-text mirror of totalCost while the field is focused, so typing (incl.
+  // intermediate states like "0." ) isn't fought by the numeric state.
+  const [totalCostInput, setTotalCostInput] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   // Maps each card id to its <ListItem> DOM node, so we can scroll the
   // selected song into view in the list whenever the selection changes.
@@ -586,6 +680,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('music-cards:songCounter', String(songCounter))
   }, [songCounter])
+
+  useEffect(() => {
+    localStorage.setItem(TOTAL_COST_KEY, String(totalCost))
+  }, [totalCost])
 
   // Whenever the selected song changes, make sure its row is visible in the
   // list. Covers adding a song, clicking a preview card, and the sheet arrows.
@@ -742,6 +840,52 @@ function App() {
     }
   }
 
+  // Spotify track id for a card (the part after the last ':' in the URI).
+  const trackIdOf = (card: CardData) => card.spotifyUri.split(':').pop() || ''
+
+  // A song is "unqueried" iff it has no aiDates entry yet. The button is enabled
+  // exactly when at least one song is unqueried.
+  const hasUnqueried = DATES_ENABLED && cards.some(c => !aiDates.has(trackIdOf(c)))
+
+  // Run the AI-dates pass over only the songs that haven't been queried yet.
+  // Sequential (no added delay) so rows fill in live and we stay gentle on rate
+  // limits. Each call's cost accumulates into the persisted lifetime total.
+  const handleGetDates = async () => {
+    if (aiLoading) return
+    const pending = cards.filter(c => !aiDates.has(trackIdOf(c)))
+    if (pending.length === 0) return
+
+    setAiLoading(true)
+    setError(null)
+    try {
+      for (const card of pending) {
+        const id = trackIdOf(card)
+        try {
+          const { year, cost } = await getSuggestedYear(
+            card.trackInfo.name,
+            card.trackInfo.artist,
+          )
+          setAiDates(prev => {
+            const next = new Map(prev)
+            next.set(id, { year: year ?? 'Error', cost })
+            return next
+          })
+          if (cost > 0) setTotalCost(prev => prev + cost)
+        } catch {
+          // Network / HTTP failure: mark the row so it's visibly flagged and
+          // won't be retried on the next press (a non-empty entry = queried).
+          setAiDates(prev => {
+            const next = new Map(prev)
+            next.set(id, { year: 'Error', cost: 0 })
+            return next
+          })
+        }
+      }
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   // ─── Card renderers ──────────────────────────────────────────────────────
 
   const renderFrontCard = (card: CardData, attrs?: Record<string, string>) => (
@@ -837,6 +981,33 @@ function App() {
         >
           {pdfLoading ? 'Generating…' : 'Generate PDF'}
         </Button>
+        {DATES_ENABLED && (
+          <>
+            <Button
+              onClick={handleGetDates}
+              disabled={!hasUnqueried || aiLoading}
+            >
+              {aiLoading ? 'Getting dates…' : 'Get AI dates'}
+            </Button>
+            <AuthStatus>Total $</AuthStatus>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={totalCostInput ?? totalCost.toFixed(5)}
+              onFocus={() => setTotalCostInput(String(totalCost))}
+              onChange={e => setTotalCostInput(e.target.value)}
+              onBlur={() => {
+                const parsed = Number(totalCostInput)
+                if (totalCostInput !== null && Number.isFinite(parsed) && parsed >= 0) {
+                  setTotalCost(parsed)
+                }
+                setTotalCostInput(null)
+              }}
+              title="Lifetime AI-query spend (USD). Editable to sync across ports/machines."
+              style={{ width: 78, fontSize: '0.85rem', border: '1px solid #ddd', borderRadius: 4, background: 'white', textAlign: 'right', padding: '4px 6px' }}
+            />
+          </>
+        )}
         <CounterBtn onClick={() => setSongCounter(p => Math.max(1, p - 1))}>−</CounterBtn>
         <SongCounterValue
           type="number"
@@ -924,10 +1095,27 @@ function App() {
 
         {/* Song list */}
         <ListPanel>
+          {DATES_ENABLED && cards.length > 0 && (
+            <ListHeader>
+              <HeadNum>#</HeadNum>
+              <HeadName>Song</HeadName>
+              <HeadArtist>Artist</HeadArtist>
+              <HeadSpotify>Spot.</HeadSpotify>
+              <HeadAi>AI</HeadAi>
+              <HeadCard>Card</HeadCard>
+              <HeadCost>$×1000</HeadCost>
+              <HeadDelete />
+            </ListHeader>
+          )}
           <ListScroll>
             {cards.length === 0
               ? <ListEmpty>No songs yet — paste a Spotify URL above and press Add</ListEmpty>
-              : cards.map((card, idx) => (
+              : cards.map((card, idx) => {
+                const ai = DATES_ENABLED ? aiDates.get(trackIdOf(card)) : undefined
+                const aiError = ai?.year === 'Error'
+                const aiConflict = !!ai && !aiError &&
+                  ai.year.trim() !== card.trackInfo.year.trim()
+                return (
                 <ListItem
                   key={card.id}
                   ref={node => {
@@ -940,7 +1128,21 @@ function App() {
                   <ListItemNum>{idx + 1}</ListItemNum>
                   <ListItemName>{card.trackInfo.name}</ListItemName>
                   <ListItemArtist>{card.trackInfo.artist}</ListItemArtist>
-                  <ListItemYear>{card.trackInfo.year}</ListItemYear>
+                  {DATES_ENABLED && (
+                    <>
+                      <ListItemSpotify>{card.trackInfo.year}</ListItemSpotify>
+                      <ListItemAi $conflict={aiConflict} $error={aiError}>
+                        {ai ? ai.year : '----'}
+                      </ListItemAi>
+                      <ListItemCard>{card.trackInfo.year}</ListItemCard>
+                      <ListItemCost>
+                        {ai ? (ai.cost * 1000).toFixed(2) : ''}
+                      </ListItemCost>
+                    </>
+                  )}
+                  {!DATES_ENABLED && (
+                    <ListItemYear>{card.trackInfo.year}</ListItemYear>
+                  )}
                   <DeleteBtn
                     title="Remove"
                     onClick={e => { e.stopPropagation(); handleDelete(card.id) }}
@@ -948,7 +1150,8 @@ function App() {
                     −
                   </DeleteBtn>
                 </ListItem>
-              ))
+                )
+              })
             }
           </ListScroll>
         </ListPanel>

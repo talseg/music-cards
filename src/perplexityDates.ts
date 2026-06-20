@@ -1,0 +1,97 @@
+// AI release-year lookup via the Perplexity Agent API (bare model, no web search).
+//
+// The browser calls the local /api/perplexity proxy with only { model, input }.
+// The proxy (configured in vite.config.ts) attaches the secret API key
+// server-side, so the key is never exposed to the browser bundle. This mirrors
+// the existing Spotify client-secret proxy pattern.
+//
+// We deliberately send NO `tools` and NO `preset` so the model answers purely
+// from its training knowledge — far cheaper than search-grounded queries, and
+// year-level accuracy is all the game needs.
+
+// Cheapest Google model in the Agent API table, and the non-preview (stable)
+// variant Google recommends migrating to. Kept as a single constant so swapping
+// models (or adding a runtime picker later) is a one-line change.
+const MODEL = 'google/gemini-3.1-flash-lite'
+
+export interface SuggestedYearResult {
+  // Four-digit year as a string (e.g. "1975"), or null if the response had no
+  // parseable year. Caller decides how to surface null (we show "Error").
+  year: string | null
+  // Exact cost of this single request in USD, read from usage.cost.total_cost.
+  // 0 if the field is missing for any reason.
+  cost: number
+}
+
+// Build the from-memory prompt. Asks for THIS artist's version (not a cover's
+// original), and explicitly excludes remasters / reissues / compilations, which
+// is exactly the class of error Spotify's release_date tends to introduce.
+function buildPrompt(songName: string, artistName: string): string {
+  return (
+    `What year was the album containing the song "${songName}" by "${artistName}" ` +
+    `originally released? I want the album by THIS specific artist's version, ` +
+    `not the original songwriter's version if it's a cover, and not a later ` +
+    `remaster, reissue, or compilation. If you can't find the album date, use ` +
+    `the recording date. Answer with just the year as a single number.`
+  )
+}
+
+// Pull the assistant text out of the Agent API response. The year lives at
+// output[].content[].text on the block whose type is "output_text".
+function extractText(data: unknown): string {
+  const output = (data as { output?: unknown }).output
+  if (!Array.isArray(output)) return ''
+  let text = ''
+  for (const item of output) {
+    const content = (item as { content?: unknown }).content
+    if (!Array.isArray(content)) continue
+    for (const block of content) {
+      const b = block as { type?: string; text?: string }
+      if (b.type === 'output_text' && typeof b.text === 'string') {
+        text += b.text
+      }
+    }
+  }
+  return text
+}
+
+// First standalone 4-digit year in the text (1000–2999). Returns null if none.
+function parseYear(text: string): string | null {
+  const match = text.match(/\b([12]\d{3})\b/)
+  return match ? match[1] : null
+}
+
+function extractCost(data: unknown): number {
+  const total = (data as { usage?: { cost?: { total_cost?: unknown } } })
+    .usage?.cost?.total_cost
+  return typeof total === 'number' ? total : 0
+}
+
+// Ask the model for the likely original release year of one song.
+// Never throws for an unparseable answer — that comes back as { year: null }.
+// Network / HTTP failures DO throw, so the caller can mark the row "Error".
+export async function getSuggestedYear(
+  songName: string,
+  artistName: string,
+  model: string = MODEL,
+): Promise<SuggestedYearResult> {
+  const response = await fetch('/api/perplexity', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      input: buildPrompt(songName, artistName),
+      temperature: 0,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Perplexity request failed: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return {
+    year: parseYear(extractText(data)),
+    cost: extractCost(data),
+  }
+}

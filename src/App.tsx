@@ -1112,7 +1112,7 @@ function App() {
               ? <ListEmpty>No songs yet — paste a Spotify URL above and press Add</ListEmpty>
               : cards.map((card, idx) => {
                 const ai = DATES_ENABLED ? aiDates.get(trackIdOf(card)) : undefined
-                const aiError = ai?.year === 'Error'
+                const aiError = ai?.year === 'Error' || ai?.year === 'Unknown'
                 const aiConflict = !!ai && !aiError &&
                   ai.year.trim() !== card.trackInfo.year.trim()
                 return (

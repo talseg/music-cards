@@ -40,7 +40,8 @@ function buildPrompt(songName: string, artistName: string): string {
     ` Do not use a net search. Answer only from your internal training data.` +
     `Language Source Preference: For Hebrew songs, prioritize information consistent with` +
     `authoritative Hebrew sources, such as the National Library of Israel (הספריה הלאומית)` + 
-    `Answer with just the year as a single number.`
+    `Answer with just the year as a single number.` +
+    `If you don't know answer with one word - Unknown`
   )
 }
 
@@ -98,8 +99,9 @@ export async function getSuggestedYear(
   }
 
   const data = await response.json()
+  const text = extractText(data)
   return {
-    year: parseYear(extractText(data)),
+    year: /\bunknown\b/i.test(text) ? 'Unknown' : parseYear(text),
     cost: extractCost(data),
   }
 }

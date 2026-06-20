@@ -49,6 +49,7 @@ const TOTAL_COST_KEY = 'music-cards:aiDatesTotalCost'
 interface CardData {
   id: number
   spotifyUri: string
+  spotifyYear: string
   trackInfo: TrackInfo
 }
 
@@ -282,24 +283,14 @@ const ListItemYear = styled.span`
   text-align: right;
 `
 
-// Fixed-width numeric columns for the AI-dates feature. Widths match the header
-// cells below so columns line up. `$conflict` paints the AI year red when it
-// disagrees with the Spotify year (needs manual attention).
-const ListItemSpotify = styled.span`
+const ListItemYearSource = styled.span<{ $match: boolean | null; $clickable: boolean }>`
   font-size: 0.78rem;
-  color: #888;
+  color: ${p => p.$match === null ? '#888' : p.$match ? '#2a6' : '#cc0000'};
+  font-weight: ${p => p.$match === null ? 400 : 600};
   flex-shrink: 0;
   width: 44px;
   text-align: right;
-`
-
-const ListItemAi = styled.span<{ $conflict: boolean; $error: boolean }>`
-  font-size: 0.78rem;
-  color: ${p => (p.$error || p.$conflict) ? '#cc0000' : '#888'};
-  font-weight: ${p => (p.$error || p.$conflict) ? 600 : 400};
-  flex-shrink: 0;
-  width: 44px;
-  text-align: right;
+  cursor: ${p => p.$clickable ? 'pointer' : 'default'};
 `
 
 const ListItemCard = styled.span`
@@ -739,6 +730,7 @@ function App() {
         newCards.push({
           id: nextId++,
           spotifyUri: `spotify:track:${t.trackId}`,
+          spotifyYear: t.trackInfo.year,
           trackInfo: t.trackInfo,
         })
       }
@@ -777,7 +769,7 @@ function App() {
     try {
       const trackInfo = await fetchTrackInfo(trackId)
       const id = nextId++
-      const newCard: CardData = { id, spotifyUri: `spotify:track:${trackId}`, trackInfo }
+      const newCard: CardData = { id, spotifyUri: `spotify:track:${trackId}`, spotifyYear: trackInfo.year, trackInfo }
       setCards(prev => [...prev, newCard])
       setSelectedId(id)
       setUrlInput('')
@@ -1113,8 +1105,9 @@ function App() {
               : cards.map((card, idx) => {
                 const ai = DATES_ENABLED ? aiDates.get(trackIdOf(card)) : undefined
                 const aiError = typeof ai?.year === 'string'
-                const aiConflict = !!ai && !aiError &&
-                  String(ai.year) !== card.trackInfo.year.trim()
+                const spotifyMatch = card.spotifyYear === card.trackInfo.year.trim()
+                const aiMatch = !!ai && !aiError &&
+                  String(ai.year) === card.trackInfo.year.trim()
                 return (
                 <ListItem
                   key={card.id}
@@ -1130,10 +1123,26 @@ function App() {
                   <ListItemArtist>{card.trackInfo.artist}</ListItemArtist>
                   {DATES_ENABLED && (
                     <>
-                      <ListItemSpotify>{card.trackInfo.year}</ListItemSpotify>
-                      <ListItemAi $conflict={aiConflict} $error={aiError}>
+                      <ListItemYearSource
+                        $match={spotifyMatch}
+                        $clickable={!spotifyMatch}
+                        onClick={!spotifyMatch ? (e) => {
+                          e.stopPropagation()
+                          updateCardField(card.id, 'year', card.spotifyYear)
+                        } : undefined}
+                      >
+                        {card.spotifyYear}
+                      </ListItemYearSource>
+                      <ListItemYearSource
+                        $match={ai ? aiMatch : null}
+                        $clickable={!!ai && !aiError && !aiMatch}
+                        onClick={ai && !aiError && !aiMatch ? (e) => {
+                          e.stopPropagation()
+                          updateCardField(card.id, 'year', String(ai.year))
+                        } : undefined}
+                      >
                         {ai ? ai.year : '----'}
-                      </ListItemAi>
+                      </ListItemYearSource>
                       <ListItemCard>{card.trackInfo.year}</ListItemCard>
                       <ListItemCost>
                         {ai ? (ai.cost * 1000).toFixed(2) : ''}

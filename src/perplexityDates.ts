@@ -9,6 +9,8 @@
 // from its training knowledge — far cheaper than search-grounded queries, and
 // year-level accuracy is all the game needs.
 
+import promptTemplate from './perplexityPrompt.txt?raw'
+
 // Cheapest Google model in the Agent API table, and the non-preview (stable)
 // variant Google recommends migrating to. Kept as a single constant so swapping
 // models (or adding a runtime picker later) is a one-line change.
@@ -19,26 +21,10 @@ export interface SuggestedYearResult {
   cost: number
 }
 
-// Build the from-memory prompt. Asks for THIS artist's version (not a cover's
-// original), and explicitly excludes remasters / reissues / compilations, which
-// is exactly the class of error Spotify's release_date tends to introduce.
 function buildPrompt(songName: string, artistName: string): string {
-  return (
-    `In what year was earliest commercial availability (album or single) of the song "${songName}" by "${artistName}" ` +
-    `I want the THIS specific artist's version, ` +
-    `not the original songwriter's version if it's a cover, and not a later ` +
-    `remaster, reissue, or compilation. Only if you can't find the album date, use ` +
-    `the recording date.` +
-    `give me the earliest release date` +
-    `Do not associate it with the artist's debut year or the year of their first-ever hit.` +
-    `Ignore the year the song reached the charts or became a popular hit` +
-    `If the song is a cover, ensure the release date corresponds to this artist's version` +
-    ` Do not use a net search. Answer only from your internal training data.` +
-    `Language Source Preference: For Hebrew songs, prioritize information consistent with` +
-    `authoritative Hebrew sources, such as the National Library of Israel (הספריה הלאומית)` + 
-    `Answer with just the year as a single number.` +
-    `If you don't know answer with one word - Unknown`
-  )
+  return promptTemplate
+    .replace('{{songName}}', songName)
+    .replace('{{artistName}}', artistName)
 }
 
 // Pull the assistant text out of the Agent API response. The year lives at

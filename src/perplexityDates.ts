@@ -15,7 +15,7 @@ import promptTemplate from './perplexityPrompt.txt?raw'
 // variant Google recommends migrating to. Kept as a single constant so swapping
 // models (or adding a runtime picker later) is a one-line change.
 const MODEL = 'google/gemini-3.1-flash-lite'
-
+//const MODEL = `openai/gpt-5.1`;
 export interface SuggestedYearResult {
   year: 'Error' | 'Unknown' | number
   cost: number
@@ -58,6 +58,8 @@ function extractCost(data: unknown): number {
   return typeof total === 'number' ? total : 0
 }
 
+const TEMPERATURE = 0;
+
 // Ask the model for the likely original release year of one song.
 // Never throws for an unparseable answer — that comes back as { year: null }.
 // Network / HTTP failures DO throw, so the caller can mark the row "Error".
@@ -72,7 +74,7 @@ export async function getSuggestedYear(
     body: JSON.stringify({
       model,
       input: buildPrompt(songName, artistName),
-      temperature: 1,
+      temperature: TEMPERATURE,
     }),
   })
 
@@ -81,6 +83,9 @@ export async function getSuggestedYear(
   }
 
   const data = await response.json()
+
+  console.log(`temprature:${TEMPERATURE} Model: ${MODEL}: ${buildPrompt(songName, artistName)} ${JSON.stringify(data)} `);
+
   const text = extractText(data)
   return {
     year: /\bunknown\b/i.test(text) ? 'Unknown' : (parseYear(text) ?? 'Error'),

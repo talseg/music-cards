@@ -76,7 +76,7 @@ const TopPanel = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 800px;
+  max-width: 1000px;
 `
 
 const VersionLabel = styled.div`
@@ -149,7 +149,7 @@ const AuthBar = styled.div`
   margin-bottom: 16px;
   flex-wrap: wrap;
   width: 100%;
-  max-width: 800px;
+  max-width: 1000px;
 `
 
 const SpotifyButton = styled.button`
@@ -215,8 +215,11 @@ const ListPanel = styled.div`
   overflow: hidden;
 `
 
+const DISPLAY_LONG_LIST = true;
+const LIST_HEIGHT = DISPLAY_LONG_LIST ? 650 : 192;
+
 const ListScroll = styled.div`
-  max-height: 192px;
+  max-height: ${LIST_HEIGHT}px;
   overflow-y: auto;
   background: white;
 `
@@ -329,9 +332,9 @@ const HeadNum = styled.span`width: 22px; flex-shrink: 0; text-align: right;`
 const HeadName = styled.span`flex: 1;`
 const HeadArtist = styled.span`width: 160px; flex-shrink: 0;`
 const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
-const HeadAi = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
-const HeadCard = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
-const HeadCost = styled.span`width: 48px; flex-shrink: 0; text-align: right;`
+const HeadAi = styled.span`width: 26px; flex-shrink: 0; text-align: right;`
+const HeadCard = styled.span`width: 54px; flex-shrink: 0; text-align: right;`
+const HeadCost = styled.span`width: 60px; flex-shrink: 0; text-align: right;`
 const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
 
 const DeleteBtn = styled.button`
@@ -954,7 +957,7 @@ function App() {
   const canScrollNext = selectedSheetIndex !== null && selectedSheetIndex < totalSheets
 
   return (
-    <AppWrapper>
+    <AppWrapper className='app_wrapper'>
       {/* Auth bar: login status + Generate PDF + counter + sheets + version */}
       <AuthBar>
         {auth.kind === 'checking' && <AuthStatus>Checking login…</AuthStatus>}
@@ -1086,20 +1089,20 @@ function App() {
         {error && <ErrorText>{error}</ErrorText>}
 
         {/* Song list */}
-        <ListPanel>
+        <ListPanel className='list_panel'>
           {DATES_ENABLED && cards.length > 0 && (
             <ListHeader>
               <HeadNum>#</HeadNum>
               <HeadName>Song</HeadName>
               <HeadArtist>Artist</HeadArtist>
-              <HeadSpotify>Spot.</HeadSpotify>
+              <HeadSpotify>Spotify</HeadSpotify>
               <HeadAi>AI</HeadAi>
               <HeadCard>Card</HeadCard>
               <HeadCost>$×1000</HeadCost>
               <HeadDelete />
             </ListHeader>
           )}
-          <ListScroll>
+          <ListScroll className='list_scroll'>
             {cards.length === 0
               ? <ListEmpty>No songs yet — paste a Spotify URL above and press Add</ListEmpty>
               : cards.map((card, idx) => {

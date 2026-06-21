@@ -335,6 +335,7 @@ const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
 const HeadAi = styled.span`width: 26px; flex-shrink: 0; text-align: right;`
 const HeadCard = styled.span`width: 54px; flex-shrink: 0; text-align: right;`
 const HeadCost = styled.span`width: 60px; flex-shrink: 0; text-align: right;`
+const HeadSearch = styled.span`width: 22px; flex-shrink: 0;`
 const HeadCopy = styled.span`width: 22px; flex-shrink: 0;`
 const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
 
@@ -358,6 +359,34 @@ const CopyBtn = styled.button`
     background: #e8f4ff;
     border-color: #99c;
     color: #33c;
+  }
+`
+
+const SearchBtn = styled.button`
+  font-size: 0.7rem;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+
+  &:hover:not(:disabled) {
+    background: #e8f0ff;
+    border-color: #99c;
+    color: #33c;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
   }
 `
 
@@ -665,6 +694,7 @@ function App() {
   // when a song is deleted + re-added, since the key disappears with the card.
   const [aiDates, setAiDates] = useState<Map<string, AiDate>>(new Map())
   const [aiLoading, setAiLoading] = useState(false)
+  const [webSearchingId, setWebSearchingId] = useState<string | null>(null)
   // Lifetime running total of AI-query spend (USD), persisted to localStorage so
   // it survives reloads. Editable by hand to sync across ports/machines.
   const [totalCost, setTotalCost] = useState(() => {
@@ -905,6 +935,35 @@ function App() {
     }
   }
 
+  const handleWebSearch = async (card: CardData) => {
+    const id = trackIdOf(card)
+    if (webSearchingId === id) return
+    setWebSearchingId(id)
+    try {
+      const oldCost = aiDates.get(id)?.cost ?? 0
+      const { year, cost } = await getSuggestedYear(
+        card.trackInfo.name,
+        card.trackInfo.artist,
+        undefined,
+        true,
+      )
+      setAiDates(prev => {
+        const next = new Map(prev)
+        next.set(id, { year, cost })
+        return next
+      })
+      setTotalCost(prev => prev - oldCost + cost)
+    } catch {
+      setAiDates(prev => {
+        const next = new Map(prev)
+        next.set(id, { year: 'Error', cost: 0 })
+        return next
+      })
+    } finally {
+      setWebSearchingId(null)
+    }
+  }
+
   // ─── Card renderers ──────────────────────────────────────────────────────
 
   const renderFrontCard = (card: CardData, attrs?: Record<string, string>) => (
@@ -1123,6 +1182,7 @@ function App() {
               <HeadAi>AI</HeadAi>
               <HeadCard>Card</HeadCard>
               <HeadCost>$×1000</HeadCost>
+              <HeadSearch />
               <HeadCopy />
               <HeadDelete />
             </ListHeader>
@@ -1176,6 +1236,18 @@ function App() {
                         {ai ? (ai.cost * 1000).toFixed(2) : ''}
                       </ListItemCost>
                     </>
+                  )}
+                  {DATES_ENABLED && (
+                    <SearchBtn
+                      title="Web search for release year"
+                      disabled={webSearchingId === trackIdOf(card)}
+                      onClick={e => {
+                        e.stopPropagation()
+                        handleWebSearch(card)
+                      }}
+                    >
+                      {webSearchingId === trackIdOf(card) ? '…' : '🔍'}
+                    </SearchBtn>
                   )}
                   {!DATES_ENABLED && (
                     <ListItemYear>{card.trackInfo.year}</ListItemYear>

@@ -66,15 +66,24 @@ export async function getSuggestedYear(
   songName: string,
   artistName: string,
   model: string = MODEL,
+  webSearch: boolean = false,
 ): Promise<SuggestedYearResult> {
+  const body: Record<string, unknown> = {
+    model,
+    input: buildPrompt(songName, artistName),
+  }
+  if (webSearch) {
+    body.tools = [{
+      type: 'web_search',
+      max_tokens: 300,
+      max_tokens_per_page: 120,
+    }]
+  }
+
   const response = await fetch('/api/perplexity', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model,
-      input: buildPrompt(songName, artistName),
-      tools: [{ type: 'web_search' }],
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {

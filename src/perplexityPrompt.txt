@@ -2,7 +2,7 @@
 Find the earliest year of commercial release for the song "{{songName}}" by the artist "{{artistName}}".
 
 ### RESEARCH GUIDELINES
-1. SEARCH: Perform a web search to identify the earliest release date (album or single). 
+1. SEARCH: Perform a search to identify the earliest release date (album or single). 
 2. FILTER: Ignore chart entry dates, popularity peaks, re-releases, remasters, or compilation appearances. 
 3. SPECIFICITY: If this is a cover, ensure the date refers to THIS artist's version. 
 4. SOURCE PRIORITY: For Hebrew songs, prioritize results from the National Library of Israel (הספריה הלאומית) or established music discography databases.

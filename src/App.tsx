@@ -335,7 +335,31 @@ const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
 const HeadAi = styled.span`width: 26px; flex-shrink: 0; text-align: right;`
 const HeadCard = styled.span`width: 54px; flex-shrink: 0; text-align: right;`
 const HeadCost = styled.span`width: 60px; flex-shrink: 0; text-align: right;`
+const HeadCopy = styled.span`width: 22px; flex-shrink: 0;`
 const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
+
+const CopyBtn = styled.button`
+  font-size: 0.75rem;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+
+  &:hover {
+    background: #e8f4ff;
+    border-color: #99c;
+    color: #33c;
+  }
+`
 
 const DeleteBtn = styled.button`
   font-size: 1rem;
@@ -1099,6 +1123,7 @@ function App() {
               <HeadAi>AI</HeadAi>
               <HeadCard>Card</HeadCard>
               <HeadCost>$×1000</HeadCost>
+              <HeadCopy />
               <HeadDelete />
             </ListHeader>
           )}
@@ -1155,6 +1180,15 @@ function App() {
                   {!DATES_ENABLED && (
                     <ListItemYear>{card.trackInfo.year}</ListItemYear>
                   )}
+                  <CopyBtn
+                    title="Copy song name and artist"
+                    onClick={e => {
+                      e.stopPropagation()
+                      navigator.clipboard.writeText(`${card.trackInfo.name} ${card.trackInfo.artist}`)
+                    }}
+                  >
+                    ⧉
+                  </CopyBtn>
                   <DeleteBtn
                     title="Remove"
                     onClick={e => { e.stopPropagation(); handleDelete(card.id) }}

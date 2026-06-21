@@ -58,7 +58,6 @@ function extractCost(data: unknown): number {
   return typeof total === 'number' ? total : 0
 }
 
-const TEMPERATURE = 0;
 
 // Ask the model for the likely original release year of one song.
 // Never throws for an unparseable answer — that comes back as { year: null }.
@@ -74,7 +73,7 @@ export async function getSuggestedYear(
     body: JSON.stringify({
       model,
       input: buildPrompt(songName, artistName),
-      temperature: TEMPERATURE,
+      tools: [{ type: 'web_search' }],
     }),
   })
 
@@ -84,7 +83,7 @@ export async function getSuggestedYear(
 
   const data = await response.json()
 
-  console.log(`temprature:${TEMPERATURE} Model: ${MODEL}: ${buildPrompt(songName, artistName)} ${JSON.stringify(data)} `);
+  console.log(`Model: ${MODEL}: ${buildPrompt(songName, artistName)} ${JSON.stringify(data)} `);
 
   const text = extractText(data)
   return {

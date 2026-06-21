@@ -1059,14 +1059,15 @@ function App() {
         >
           {pdfLoading ? 'Generating…' : 'Generate PDF'}
         </Button>
+        <Button
+          onClick={DATES_ENABLED ? handleGetDates : undefined}
+          disabled={!DATES_ENABLED || !hasUnqueried || aiLoading}
+          title={!DATES_ENABLED ? 'AI dates feature is disabled.\nAdd PERPLEXITY_API_KEY and set VITE_DATES_ENABLED=true in .env to enable.' : undefined}
+        >
+          {aiLoading ? 'Getting dates…' : 'Get AI dates'}
+        </Button>
         {DATES_ENABLED && (
           <>
-            <Button
-              onClick={handleGetDates}
-              disabled={!hasUnqueried || aiLoading}
-            >
-              {aiLoading ? 'Getting dates…' : 'Get AI dates'}
-            </Button>
             <AuthStatus>Total $</AuthStatus>
             <input
               type="text"

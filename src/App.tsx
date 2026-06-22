@@ -840,16 +840,16 @@ function App() {
   }
 
   const handleDelete = (id: number) => {
-    setCards(prev => {
-      const idx = prev.findIndex(c => c.id === id)
-      const next = prev.filter(c => c.id !== id)
-      // Select the card after the deleted one, or nothing if it was last
-      if (selectedId === id) {
-        const nextCard = next[idx] ?? next[idx - 1] ?? null
-        setSelectedId(nextCard ? nextCard.id : null)
-      }
-      return next
-    })
+    // If the deleted card is selected, move selection to the card after it
+    // (or the one before, or nothing). Computed here from current state rather
+    // than inside the setCards updater, which must stay side-effect free.
+    if (selectedId === id) {
+      const idx = cards.findIndex(c => c.id === id)
+      const remaining = cards.filter(c => c.id !== id)
+      const nextCard = remaining[idx] ?? remaining[idx - 1] ?? null
+      setSelectedId(nextCard ? nextCard.id : null)
+    }
+    setCards(prev => prev.filter(c => c.id !== id))
     setSongCounter(prev => Math.max(1, prev - 1))
   }
 

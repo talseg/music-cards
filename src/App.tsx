@@ -1272,6 +1272,18 @@ function App() {
                       </ListItemCost>
                     </>
                   )}
+                  {!DATES_ENABLED && (
+                    <ListItemYear>{card.trackInfo.year}</ListItemYear>
+                  )}
+                  <CopyBtn
+                    title="Copy song name and artist"
+                    onClick={e => {
+                      e.stopPropagation()
+                      navigator.clipboard.writeText(`song ${card.trackInfo.name} ${card.trackInfo.artist} first official release date`)
+                    }}
+                    >
+                    ⧉
+                  </CopyBtn>
                   {DATES_ENABLED && (
                     <SearchBtn
                       title="Web search for release year"
@@ -1284,18 +1296,6 @@ function App() {
                       {webSearchingId === trackIdOf(card) ? '…' : '🔍'}
                     </SearchBtn>
                   )}
-                  {!DATES_ENABLED && (
-                    <ListItemYear>{card.trackInfo.year}</ListItemYear>
-                  )}
-                  <CopyBtn
-                    title="Copy song name and artist"
-                    onClick={e => {
-                      e.stopPropagation()
-                      navigator.clipboard.writeText(`${card.trackInfo.name} ${card.trackInfo.artist}`)
-                    }}
-                  >
-                    ⧉
-                  </CopyBtn>
                   <DeleteBtn
                     title="Remove"
                     onClick={e => { e.stopPropagation(); handleDelete(card.id) }}

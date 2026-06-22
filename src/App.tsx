@@ -889,6 +889,15 @@ function App() {
     }
   }
 
+  const handleClearAll = () => {
+    // Mirrors deleting every song one by one: the cards are removed but the
+    // aiDates entries (keyed by track id) are kept, so re-adding a song — or
+    // re-importing a playlist it's in — restores its previous AI year/cost.
+    setCards([])
+    setSelectedId(null)
+    setError(null)
+  }
+
   // Spotify track id for a card (the part after the last ':' in the URI).
   const trackIdOf = (card: CardData) => card.spotifyUri.split(':').pop() || ''
 
@@ -1058,6 +1067,13 @@ function App() {
           disabled={cards.length === 0 || pdfLoading}
         >
           {pdfLoading ? 'Generating…' : 'Generate PDF'}
+        </Button>
+        <Button
+          onClick={handleClearAll}
+          disabled={cards.length === 0}
+          title="Remove all songs from the list"
+        >
+          Clear all
         </Button>
         <Button
           onClick={DATES_ENABLED ? handleGetDates : undefined}

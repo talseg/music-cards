@@ -664,6 +664,13 @@ function toAuthState(result: InitAuthResult): AuthState {
   }
 }
 
+// AI costs come in at 5-decimal (USD) precision. Snap every accumulated value
+// back onto that exact 1e-5 grid at each step so floating-point error can never
+// build up in the stored per-song or lifetime totals.
+function round5(n: number): number {
+  return Math.round(n * 1e5) / 1e5
+}
+
 function sheetCount(cardCount: number): string {
   if (cardCount === 0) return '0'
   const sheets = cardCount / CARDS_PER_SHEET
@@ -703,7 +710,7 @@ function App() {
   const [totalCost, setTotalCost] = useState(() => {
     const stored = localStorage.getItem(TOTAL_COST_KEY)
     const parsed = Number(stored)
-    return stored && Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+    return stored && Number.isFinite(parsed) && parsed >= 0 ? round5(parsed) : 0
   })
   // Free-text mirror of totalCost while the field is focused, so typing (incl.
   // intermediate states like "0." ) isn't fought by the numeric state.
@@ -928,10 +935,10 @@ function App() {
           )
           setAiDates(prev => {
             const next = new Map(prev)
-            next.set(id, { year, cost })
+            next.set(id, { year, cost: round5(cost) })
             return next
           })
-          if (cost > 0) setTotalCost(prev => prev + cost)
+          if (cost > 0) setTotalCost(prev => round5(prev + cost))
         } catch {
           // Network / HTTP failure: mark the row so it's visibly flagged and
           // won't be retried on the next press (a non-empty entry = queried).
@@ -963,10 +970,10 @@ function App() {
       setAiDates(prev => {
         const next = new Map(prev)
         const prevCost = prev.get(id)?.cost ?? 0
-        next.set(id, { year, cost: prevCost + cost })
+        next.set(id, { year, cost: round5(prevCost + cost) })
         return next
       })
-      if (cost > 0) setTotalCost(prev => prev + cost)
+      if (cost > 0) setTotalCost(prev => round5(prev + cost))
     } catch {
       // Failed query: keep the accumulated cost, just flag the year.
       setAiDates(prev => {
@@ -1096,12 +1103,12 @@ function App() {
               type="text"
               inputMode="decimal"
               value={totalCostInput ?? totalCost.toFixed(5)}
-              onFocus={() => setTotalCostInput(String(totalCost))}
+              onFocus={() => setTotalCostInput(totalCost.toFixed(5))}
               onChange={e => setTotalCostInput(e.target.value)}
               onBlur={() => {
                 const parsed = Number(totalCostInput)
                 if (totalCostInput !== null && Number.isFinite(parsed) && parsed >= 0) {
-                  setTotalCost(parsed)
+                  setTotalCost(round5(parsed))
                 }
                 setTotalCostInput(null)
               }}

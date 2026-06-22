@@ -1249,8 +1249,7 @@ function App() {
                       <ListItemYearSource
                         $match={spotifyMatch}
                         $clickable={!spotifyMatch}
-                        onClick={!spotifyMatch ? (e) => {
-                          e.stopPropagation()
+                        onClick={!spotifyMatch ? () => {
                           updateCardField(card.id, 'year', card.spotifyYear)
                         } : undefined}
                       >
@@ -1259,8 +1258,7 @@ function App() {
                       <ListItemYearSource
                         $match={ai ? aiMatch : null}
                         $clickable={!!ai && !aiError && !aiMatch}
-                        onClick={ai && !aiError && !aiMatch ? (e) => {
-                          e.stopPropagation()
+                        onClick={ai && !aiError && !aiMatch ? () => {
                           updateCardField(card.id, 'year', String(ai.year))
                         } : undefined}
                       >
@@ -1277,8 +1275,7 @@ function App() {
                   )}
                   <CopyBtn
                     title="Copy song name and artist"
-                    onClick={e => {
-                      e.stopPropagation()
+                    onClick={() => {
                       navigator.clipboard.writeText(`song ${card.trackInfo.name} ${card.trackInfo.artist} first official release date`)
                     }}
                     >
@@ -1288,8 +1285,7 @@ function App() {
                     <SearchBtn
                       title="Web search for release year"
                       disabled={webSearchingId === trackIdOf(card)}
-                      onClick={e => {
-                        e.stopPropagation()
+                      onClick={() => {
                         handleWebSearch(card)
                       }}
                     >

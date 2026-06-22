@@ -60,6 +60,8 @@ interface CardData {
 // marker on a failed call.
 interface AiDate {
   year: 'Error' | 'Unknown' | number
+  // Cumulative cost (USD) of every query run on this song — the initial
+  // "Get AI dates" plus each subsequent web search.
   cost: number
 }
 
@@ -950,23 +952,27 @@ function App() {
     if (webSearchingId === id) return
     setWebSearchingId(id)
     try {
-      const oldCost = aiDates.get(id)?.cost ?? 0
       const { year, cost } = await getSuggestedYear(
         card.trackInfo.name,
         card.trackInfo.artist,
         undefined,
         true,
       )
+      // Accumulate this query's cost onto whatever the song already spent, so
+      // the row shows the song's lifetime total across all its queries.
       setAiDates(prev => {
         const next = new Map(prev)
-        next.set(id, { year, cost })
+        const prevCost = prev.get(id)?.cost ?? 0
+        next.set(id, { year, cost: prevCost + cost })
         return next
       })
-      setTotalCost(prev => prev - oldCost + cost)
+      if (cost > 0) setTotalCost(prev => prev + cost)
     } catch {
+      // Failed query: keep the accumulated cost, just flag the year.
       setAiDates(prev => {
         const next = new Map(prev)
-        next.set(id, { year: 'Error', cost: 0 })
+        const prevCost = prev.get(id)?.cost ?? 0
+        next.set(id, { year: 'Error', cost: prevCost })
         return next
       })
     } finally {

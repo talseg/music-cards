@@ -41,8 +41,12 @@ const CARD_RADIUS_PX = 8
 // 'true'. Anything else (absent / other value) leaves the feature off.
 const DATES_ENABLED = import.meta.env.VITE_DATES_ENABLED === 'true'
 
-// localStorage key for the lifetime running total of AI-query spend (USD).
-const TOTAL_COST_KEY = 'music-cards:aiDatesTotalCost'
+// App-data localStorage keys. These deliberately live OUTSIDE the 'music-cards:'
+// auth namespace: clearStoredAuth() (on logout, and on the expired/stale-token
+// paths during mount) sweeps every key under that prefix, which would otherwise
+// wipe these too.
+const TOTAL_COST_KEY = 'music-cards-app:aiDatesTotalCost'
+const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -694,7 +698,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [songCounter, setSongCounter] = useState(() => {
-    const stored = localStorage.getItem('music-cards:songCounter')
+    const stored = localStorage.getItem(SONG_COUNTER_KEY)
     const parsed = Number(stored)
     return stored && Number.isFinite(parsed) && parsed >= 1 ? parsed : 1
   })
@@ -736,7 +740,7 @@ function App() {
   const loggedIn = auth.kind === 'in'
 
   useEffect(() => {
-    localStorage.setItem('music-cards:songCounter', String(songCounter))
+    localStorage.setItem(SONG_COUNTER_KEY, String(songCounter))
   }, [songCounter])
 
   useEffect(() => {

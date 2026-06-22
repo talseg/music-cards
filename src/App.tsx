@@ -335,8 +335,8 @@ const HeadArtist = styled.span`width: 160px; flex-shrink: 0;`
 const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
 const HeadAi = styled.span`width: 26px; flex-shrink: 0; text-align: right;`
 const HeadCard = styled.span`width: 54px; flex-shrink: 0; text-align: right;`
-const HeadCost = styled.span`width: 60px; flex-shrink: 0; text-align: right;`
-const HeadSearch = styled.span`width: 22px; flex-shrink: 0;`
+const HeadCost = styled.span`width: 56px; flex-shrink: 0; text-align: right;`
+const HeadSearch = styled.span`width: 28px; flex-shrink: 0;`
 const HeadCopy = styled.span`width: 22px; flex-shrink: 0;`
 const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
 
@@ -1199,7 +1199,7 @@ function App() {
               <HeadSpotify>Spotify</HeadSpotify>
               <HeadAi>AI</HeadAi>
               <HeadCard>Card</HeadCard>
-              <HeadCost>$×1000</HeadCost>
+              <HeadCost>cents</HeadCost>
               <HeadSearch />
               <HeadCopy />
               <HeadDelete />
@@ -1251,7 +1251,7 @@ function App() {
                       </ListItemYearSource>
                       <ListItemCard>{card.trackInfo.year}</ListItemCard>
                       <ListItemCost>
-                        {ai ? (ai.cost * 1000).toFixed(2) : ''}
+                        {ai ? (ai.cost * 100).toFixed(3) : ''}
                       </ListItemCost>
                     </>
                   )}

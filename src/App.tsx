@@ -54,9 +54,10 @@ interface CardData {
 }
 
 // Transient AI-date result for one song, keyed by Spotify track id. Deliberately
-// NOT part of CardData and NOT persisted: a song is "already queried" iff it has
-// an entry here, so deleting + re-adding a song resets it to unqueried. `year`
-// holds the parsed 4-digit year, or the literal 'Error' marker on a failed call.
+// NOT part of CardData and NOT persisted (resets on reload). Entries are kept
+// when a song is removed, so re-adding it restores its previous AI result rather
+// than re-querying. `year` holds the parsed 4-digit year, or the literal 'Error'
+// marker on a failed call.
 interface AiDate {
   year: 'Error' | 'Unknown' | number
   cost: number
@@ -690,8 +691,8 @@ function App() {
   })
   const [pdfLoading, setPdfLoading] = useState(false)
   // AI release-year results, keyed by Spotify track id. Presence of an entry =
-  // "already queried" (so the same song isn't queried twice). Reset naturally
-  // when a song is deleted + re-added, since the key disappears with the card.
+  // "already queried" (so the same song isn't queried twice). Entries persist
+  // when songs are removed, so re-adding a song restores its previous result.
   const [aiDates, setAiDates] = useState<Map<string, AiDate>>(new Map())
   const [aiLoading, setAiLoading] = useState(false)
   const [webSearchingId, setWebSearchingId] = useState<string | null>(null)

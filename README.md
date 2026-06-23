@@ -54,7 +54,7 @@ Print the deck, cut the cards out, and play: scan a QR code to hear the song, gu
    - `https://<your-ip-address>:5173/callback` &nbsp;(for `npm run dev`)
    - `https://<your-ip-address>:4173/callback` &nbsp;(for `npm run preview`)
 5. Under **Which API/SDKs are you planning to use?**, check **Web API** and **Web Playback SDK**.
-6. Click **Save**.
+6. Be sure to scroll down and Click **Save**.
 7. Open the **User Management** tab and add the name + email of every Spotify account that will use the app.
 
 > ⚠️ **Common pitfall:** your IP address can change after a reboot. If it does, you **must** add the new IP to the Redirect URIs above.
@@ -137,6 +137,22 @@ Once enabled, two options appear:
 > 💡 **Web search is off by default** and must be toggled on (with a confirmation prompt) because each query has a real cost.
 
 If `VITE_DATES_ENABLED` is absent or not exactly `true`, the entire AI feature stays hidden.
+
+---
+
+## 🕹️ Usage & Tips
+
+- **Edit cards inline** — Click the **title**, **artist**, or **year** directly on the preview card to edit it. Changes save as soon as you click away.
+
+- **Export playlist needs login** — The **Export playlist** field (load every song from a Spotify playlist or your Liked Songs) only works when you're signed in to Spotify. The **Add song** field works without logging in, for adding tracks one at a time.
+
+- **Pick which year prints (AI mode)** — Each song row shows two suggested years side by side: the **Spotify** year and the **AI** year. Click either value to set it as the year printed on the card (shown in the **Card** column).
+
+- **Copy button (⧉)** — Copies a ready-made search string — `song <title> <artist> first official release date` — to your clipboard. Paste it into your browser to quickly look up a song's release date.
+
+- **Song counter** — The +/− counter is a manual tally for tracking your place while adding songs by hand (e.g. which number you're on in a physical list). It persists between sessions.
+
+- **Sheet count** — Shows how many pages your deck fills, at 4 cards per sheet. It's rounded up to the nearest quarter, so a value like `1.25 sheets` tells you the last page is only partly filled — handy for not wasting paper.
 
 ---
 

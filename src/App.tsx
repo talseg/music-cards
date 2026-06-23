@@ -1413,7 +1413,7 @@ function App() {
                     <ListItemYear>{card.trackInfo.year}</ListItemYear>
                   )}
                   <CopyBtn
-                    title="Copy song name and artist"
+                    title="Copy song name search string to clipboard"
                     onClick={() => {
                       navigator.clipboard.writeText(`song ${card.trackInfo.name} ${card.trackInfo.artist} first official release date`)
                     }}

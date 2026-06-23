@@ -5,7 +5,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 
-> Turn any Spotify playlist — or your Liked Songs — into a printable deck of cards for a music **timeline guessing game**.
+> Turn any Spotify playlist — or your Liked Songs — into a printable deck of cards for a music **guessing game**.
 
 ---
 
@@ -16,7 +16,7 @@
 - **One side** — a **QR code** that opens the track in Spotify.
 - **Other side** — the song's **title, artist, and release year** (the answer).
 
-Print the deck, cut the cards out, and play: scan a QR code to hear the song, guess its release year, and place it on your timeline. Flip the card to check.
+Print the deck, cut the cards out, and play: scan a QR code to hear the song, guess its details, then flip the card to check.
 
 ---
 
@@ -177,7 +177,22 @@ This project is released under the [MIT License](./LICENSE).
 
 ---
 
+## ⚖️ Disclaimer
+
+- **Non-commercial hobby project.** Music Cards is a personal, non-commercial project provided "as is", for personal use only. Generated cards are **not for resale**.
+- **Not affiliated with Spotify.** This is an independent project, not affiliated with, endorsed by, or sponsored by Spotify. "Spotify" is a trademark of Spotify AB. Use of the Spotify API is subject to Spotify's [Developer Terms](https://developer.spotify.com/terms) and Design Guidelines.
+- **No music is hosted or distributed.** The app stores and streams no audio. Cards contain only text (title, artist, year) and a QR code that links to Spotify — no album artwork or other copyrighted images. All music and related rights remain with their respective owners, and playback happens through your own Spotify account.
+- **Independent design.** This is an original, independently built project. No third-party names, logos, branding, or song selections are used.
+- **Your responsibility.** You are responsible for your own use of the app and the codes and cards it generates, including complying with Spotify's terms and any applicable laws.
+- **Not legal advice.** This notice is provided for transparency and does not constitute legal advice.
+
+---
+
 ## 🙏 Acknowledgments
 
 - Built by **Tal Segal** with React, TypeScript, and [Vite](https://vitejs.dev/).
 - Developed with the help of **Anthropic Claude**.
+
+---
+
+*Spotify® is a registered trademark of Spotify AB. All other trademarks are the property of their respective owners.*

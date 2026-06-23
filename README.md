@@ -66,8 +66,6 @@ Print the deck, cut the cards out, and play: scan a QR code to hear the song, gu
 
 <br>
 
-On Windows, press <kbd>Win</kbd> + <kbd>R</kbd>, type `cmd`, then run:
-
 ```bash
 ipconfig | findstr IPv4
 # IPv4 Address. . . . . . . . . . . : <this-is-your-ip-address>
@@ -76,8 +74,6 @@ ipconfig | findstr IPv4
 </details>
 
 ### 🛠️ Project setup
-
-> Steps to create the project locally. Do these once.
 
 **1. Clone and install**
 
@@ -99,11 +95,9 @@ VITE_DATES_ENABLED=true
 PERPLEXITY_API_KEY=your_perplexity_api_key
 ```
 
-> 🔒 `SPOTIFY_CLIENT_SECRET` has **no** `VITE_` prefix on purpose — it's read server-side by the Vite proxy and never reaches the browser.
+> 🔒 `SPOTIFY_CLIENT_SECRET` and `PERPLEXITY_API_KEY` have **no** `VITE_` prefix on purpose — it's read server-side by the Vite proxy and never reaches the browser.
 
 ### ▶️ Running the app
-
-> Use these every time you want to start the app.
 
 ```bash
 # Development

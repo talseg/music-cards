@@ -73,7 +73,10 @@ ipconfig | findstr IPv4
 
 </details>
 
-### 🛠️ Project setup
+<details>
+<summary><strong>🛠️ Project setup</strong></summary>
+
+<br>
 
 **1. Clone and install**
 
@@ -95,7 +98,9 @@ VITE_DATES_ENABLED=true
 PERPLEXITY_API_KEY=your_perplexity_api_key
 ```
 
-> 🔒 `SPOTIFY_CLIENT_SECRET` and `PERPLEXITY_API_KEY` have **no** `VITE_` prefix on purpose — it's read server-side by the Vite proxy and never reaches the browser.
+> 🔒 `SPOTIFY_CLIENT_SECRET` and `PERPLEXITY_API_KEY` have **no** `VITE_` prefix on purpose — they're read server-side by the Vite proxy and never reach the browser.
+
+</details>
 
 ### ▶️ Running the app
 

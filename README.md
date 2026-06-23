@@ -75,7 +75,9 @@ ipconfig | findstr IPv4
 
 </details>
 
-### 🛠️ Installation
+### 🛠️ Project setup
+
+> Steps to create the project locally. Do these once.
 
 **1. Clone and install**
 
@@ -99,7 +101,9 @@ PERPLEXITY_API_KEY=your_perplexity_api_key
 
 > 🔒 `SPOTIFY_CLIENT_SECRET` has **no** `VITE_` prefix on purpose — it's read server-side by the Vite proxy and never reaches the browser.
 
-**3. Run the app**
+### ▶️ Running the app
+
+> Use these every time you want to start the app.
 
 ```bash
 # Development

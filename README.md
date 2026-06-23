@@ -184,6 +184,8 @@ This project is released under the [MIT License](./LICENSE).
 - ✅ Free for personal use, learning, and contributions.
 - 🚫 Not allowed: publishing as an app on Google Play, Apple App Store, or similar platforms.
 
+🤝 **Want to contribute?** I'd be happy to have you on board — email **[talseg7@gmail.com](mailto:talseg7@gmail.com)** and we'll take it from there.
+
 ---
 
 ## ⚖️ Disclaimer

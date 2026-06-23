@@ -11,18 +11,18 @@
 
 ## 📖 About
 
+<img src="src/assets/card-example.png" alt="Example Music Cards card — front with song details, back with QR code" align="right" width="120" />
+
 **Music Cards** generates printable, double-sided cards from your Spotify music:
 
 - **One side** — a **QR code** that opens the track in Spotify.
 - **Other side** — the song's **title, artist, and release year** (the answer).
 
-<p align="center">
-  <img src="src/assets/card-example.png" alt="Example Music Cards card — front with song details, back with QR code" width="150" />
-  <br>
-  <sub><em>An example card — front (song details) and back (QR code).</em></sub>
-</p>
-
 Print the deck, cut the cards out, and play: scan a QR code to hear the song, guess its details, then flip the card to check.
+
+<sub><em>↑ An example card — front (song details) and back (QR code).</em></sub>
+
+<br clear="all" />
 
 ---
 

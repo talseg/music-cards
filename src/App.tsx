@@ -903,7 +903,7 @@ function App() {
     }
   }
 
-  const handleClearAll = () => {
+  const handleClearSongs = () => {
     // Mirrors deleting every song one by one: the cards are removed but the
     // aiDates entries (keyed by track id) are kept, so re-adding a song — or
     // re-importing a playlist it's in — restores its previous AI year/cost.
@@ -1087,11 +1087,11 @@ function App() {
           {pdfLoading ? 'Generating…' : 'Generate PDF'}
         </Button>
         <Button
-          onClick={handleClearAll}
+          onClick={handleClearSongs}
           disabled={cards.length === 0}
           title="Remove all songs from the list"
         >
-          Clear all
+          Clear Songs
         </Button>
         <Button
           onClick={DATES_ENABLED ? handleGetDates : undefined}

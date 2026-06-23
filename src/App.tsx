@@ -707,7 +707,15 @@ function App() {
   // "already queried" (so the same song isn't queried twice). Entries persist
   // when songs are removed, so re-adding a song restores its previous result.
   const [aiDates, setAiDates] = useState<Map<string, AiDate>>(new Map())
-  const [aiLoading, setAiLoading] = useState(false)
+  // 'running' = a get-dates pass is in flight; 'pausing' = pause requested but the
+  // current song's call is still finishing; 'paused' = a pass was interrupted with
+  // songs still unqueried; 'idle' = nothing running. The pass loop is sequential,
+  // so pausing only stops it between songs (the in-flight call always finishes and
+  // is saved). pauseRef is read inside that loop, where React state wouldn't be
+  // visible — a ref always reflects the latest value.
+  const [aiStatus, setAiStatus] =
+    useState<'idle' | 'running' | 'pausing' | 'paused'>('idle')
+  const pauseRef = useRef(false)
   const [webSearchingId, setWebSearchingId] = useState<string | null>(null)
   // Lifetime running total of AI-query spend (USD), persisted to localStorage so
   // it survives reloads. Editable by hand to sync across ports/machines.
@@ -922,15 +930,27 @@ function App() {
   // Run the AI-dates pass over only the songs that haven't been queried yet.
   // Sequential (no added delay) so rows fill in live and we stay gentle on rate
   // limits. Each call's cost accumulates into the persisted lifetime total.
-  const handleGetDates = async () => {
-    if (aiLoading) return
+  //
+  // This is both "start" and "resume": pending is recomputed from the current
+  // aiDates each time, so songs already done in a prior (paused) pass are skipped
+  // and we naturally continue where we stopped.
+  const runDates = async () => {
+    if (aiStatus === 'running' || aiStatus === 'pausing') return
     const pending = cards.filter(c => !aiDates.has(trackIdOf(c)))
     if (pending.length === 0) return
 
-    setAiLoading(true)
+    pauseRef.current = false
+    setAiStatus('running')
     setError(null)
+    let interrupted = false
     try {
       for (const card of pending) {
+        // Pause takes effect between songs: a request already in flight always
+        // finishes and is saved; we just stop before starting the next one.
+        if (pauseRef.current) {
+          interrupted = true
+          break
+        }
         const id = trackIdOf(card)
         try {
           const { year, cost } = await getSuggestedYear(
@@ -954,7 +974,22 @@ function App() {
         }
       }
     } finally {
-      setAiLoading(false)
+      // 'paused' only if we stopped with work remaining; a fully-completed pass
+      // (or a pause requested on the last song) ends as 'idle'.
+      setAiStatus(interrupted ? 'paused' : 'idle')
+    }
+  }
+
+  // Button action: while running, a press requests a pause (the loop stops after
+  // the current song). Otherwise it starts or resumes the pass.
+  const handleDatesButton = () => {
+    if (aiStatus === 'running') {
+      // Request a pause; the loop stops after the current song finishes. Show
+      // 'pausing' in the meantime so the label reflects the in-progress stop.
+      pauseRef.current = true
+      setAiStatus('pausing')
+    } else if (aiStatus !== 'pausing') {
+      runDates()
     }
   }
 
@@ -1094,11 +1129,20 @@ function App() {
           Clear Songs
         </Button>
         <Button
-          onClick={DATES_ENABLED ? handleGetDates : undefined}
-          disabled={!DATES_ENABLED || !hasUnqueried || aiLoading}
+          onClick={DATES_ENABLED ? handleDatesButton : undefined}
+          // Disabled when idle with nothing to query, and during 'pausing' (the
+          // stop is committed, just finishing the current song). While running
+          // it's the Pause control; while paused it's the Resume control.
+          disabled={!DATES_ENABLED || aiStatus === 'pausing' || (aiStatus === 'idle' && !hasUnqueried)}
           title={!DATES_ENABLED ? 'AI dates feature is disabled.\nAdd PERPLEXITY_API_KEY and set VITE_DATES_ENABLED=true in .env to enable.' : undefined}
         >
-          {aiLoading ? 'Getting dates…' : 'Get AI dates'}
+          {aiStatus === 'running'
+            ? 'Pause'
+            : aiStatus === 'pausing'
+              ? 'Pausing…'
+              : aiStatus === 'paused'
+                ? 'Resume'
+                : 'Get AI dates'}
         </Button>
         {DATES_ENABLED && (
           <>

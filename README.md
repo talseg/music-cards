@@ -1,102 +1,155 @@
-<h1>Music Cards</h1>
+<h1>🎵 Music Cards</h1>
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 
-
+> Turn any Spotify playlist — or your Liked Songs — into a printable deck of cards for a music **timeline guessing game**.
 
 ---
 
+## 📖 About
 
+**Music Cards** generates printable, double-sided cards from your Spotify music:
+
+- **One side** — a **QR code** that opens the track in Spotify.
+- **Other side** — the song's **title, artist, and release year** (the answer).
+
+Print the deck, cut the cards out, and play: scan a QR code to hear the song, guess its release year, and place it on your timeline. Flip the card to check.
 
 ---
 
 ## 🎮 Features
 
+- 🎧 Import songs from a **Spotify playlist** or your **Liked Songs**.
+- 🖨️ Export a **print-ready PDF** of double-sided cards (QR + song details).
+- 📅 Optional **AI release-year lookup** so you don't have to research dates by hand.
+- ⏯️ **Pause / resume** the AI lookup at any time.
 
 ---
 
 ## 🚀 Getting Started
 
+<details>
+<summary><strong>✅ Prerequisites</strong></summary>
 
+<br>
 
-### Prerequisites
-- You must have a paid [Spotify Premium Account](https://open.spotify.com/) 
-- [git](https://git-scm.com/)
-- [Node.js LTS](https://nodejs.org/)
+- A paid **[Spotify Premium](https://open.spotify.com/)** account (required for playback).
+- **[Git](https://git-scm.com/)**
+- **[Node.js LTS](https://nodejs.org/)**
 
-### Spotify Dashboard definition
-- Login to [Spotify developer Dashboard - https://developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
-- Create a new Application
-- In the Basic Information section generate a Client ID and a Client secret
-- Under the src directory create a .env file with this format:
+</details>
+
+<details>
+<summary><strong>🟢 Spotify Developer setup</strong></summary>
+
+<br>
+
+1. Sign in to the **[Spotify Developer Dashboard](https://developer.spotify.com/dashboard)**.
+2. **Create app** → fill in any App name and description.
+3. Copy the **Client ID** and **Client Secret** (you'll need them for `.env`).
+4. Under **Redirect URIs**, add both of these (replace `<your-ip-address>`):
+   - `https://<your-ip-address>:5173/callback` &nbsp;(for `npm run dev`)
+   - `https://<your-ip-address>:4173/callback` &nbsp;(for `npm run preview`)
+5. Under **Which API/SDKs are you planning to use?**, check **Web API** and **Web Playback SDK**.
+6. Click **Save**.
+7. Open the **User Management** tab and add the name + email of every Spotify account that will use the app.
+
+> ⚠️ **Common pitfall:** your IP address can change after a reboot. If it does, you **must** add the new IP to the Redirect URIs above.
+
+</details>
+
+<details>
+<summary><strong>🔍 Finding your IP address</strong></summary>
+
+<br>
+
+On Windows, press <kbd>Win</kbd> + <kbd>R</kbd>, type `cmd`, then run:
+
 ```bash
-VITE_SPOTIFY_CLIENT_ID=<Your Client ID>
-VITE_SPOTIFY_CLIENT_SECRET=<Your Client Secret>
+ipconfig | findstr IPv4
+# IPv4 Address. . . . . . . . . . . : <this-is-your-ip-address>
 ```
-- Add an App name and App description (anything you feel like)
-- Add your i
-- find out your ip address and ports to the Redirect URLs section 
-- add https://\<your-ip-address\>:4173/callback
-- add https://\<your-ip-address\>:5173/callback
-</br>
-- to find your ip address:
-On PC open a terminal (Microsoft+r) and write cmd
-</br>
-in the terminal:
+
+</details>
+
+### 🛠️ Installation
+
+**1. Clone and install**
+
 ```bash
-C:\>ipconfig | findstr IPv4
-IPv4 Address. . . . . . . . . . . : <this-is-your-ip-address>
-```
-</br>
-
-- (4173 is for running: npm run preview)
-- (5173 is for running: npm run dev)
-- Note:
-- If reboot your computer abd get a different ip address - **you MUST add it** to the Urls in the dashboard this is a common pitfall.
-- At the bottom Which API/SDKs are you planning to use:
-- Check Web API and Web Playback SDK
-- Check Web Playback SDK
-- Don't forget to Save at the bottom
-- Move to the User Management Tab
-- Add you name and email
-- If you have several members in you spotify account that want to run the app - add their names and emails also
-
-
-### Installation
-```bash
-# Clone the repo
 git clone https://github.com/talseg/music-cards.git
 cd music-cards
-
-# Install dependencies
 npm install
 ```
 
-### Run locally
+**2. Create a `.env` file in the project root** (next to `package.json` — **not** inside `src/`):
+
 ```bash
-npm run build
-npm run preview
-# or
-npm run dev
+# Spotify — required
+VITE_SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+
+# AI release-year lookup — optional (see "AI Dates" below)
+VITE_DATES_ENABLED=true
+PERPLEXITY_API_KEY=your_perplexity_api_key
 ```
 
-for preview - Open http://<your-ip-address>:4173 in your browser.
-for build - Open http://<your-ip-address>:5173 in your browser.
+> 🔒 `SPOTIFY_CLIENT_SECRET` has **no** `VITE_` prefix on purpose — it's read server-side by the Vite proxy and never reaches the browser.
 
-Note:
-You **can not run** it from https://localhost:5173/ 
+**3. Run the app**
+
+```bash
+# Development
+npm run dev        # → https://<your-ip-address>:5173
+
+# Production preview
+npm run build
+npm run preview    # → https://<your-ip-address>:4173
+```
+
+> ℹ️ The app runs over **HTTPS** with a self-signed certificate, so your browser will show a security warning on first visit — accept it to continue.
+>
+> 🚫 Open it via your **IP address**, not `https://localhost:5173`.
+
+---
+
+## 🤖 AI Dates (optional)
+
+Filling in each song's original release year by hand is tedious, so Music Cards can look it up with AI.
+
+**Enable it** by setting both of these in your `.env`:
+
+```bash
+VITE_DATES_ENABLED=true
+PERPLEXITY_API_KEY=your_perplexity_api_key   # from the Perplexity API dashboard
+```
+
+Once enabled, two options appear:
+
+| Option | What it does | Cost |
+| --- | --- | --- |
+| **Get AI dates** | Bulk-fills years from the AI model's own knowledge. Pause / resume any time. | Very low |
+| **Web search** 🔍 | Per-song lookup using a live web search — more accurate for obscure tracks. | ~0.5¢ per query |
+
+> 💡 **Web search is off by default** and must be toggled on (with a confirmation prompt) because each query has a real cost.
+
+If `VITE_DATES_ENABLED` is absent or not exactly `true`, the entire AI feature stays hidden.
+
 ---
 
 ## 📜 License
 
-This project is released under the [MIT License](./LICENSE)
+This project is released under the [MIT License](./LICENSE).
 
-- ✅ Free for personal use, learning, and contributions.  
-- 🚫 Not allowed: publishing as an app on Google Play, Apple App Store, or similar platforms.  
+- ✅ Free for personal use, learning, and contributions.
+- 🚫 Not allowed: publishing as an app on Google Play, Apple App Store, or similar platforms.
 
 ---
 
 ## 🙏 Acknowledgments
-- Built by Tal Segal using React and TypeScript.
-- Built with [Vite](https://vitejs.dev/) and [Storybook](https://storybook.js.org/).
-- Built using Anthropic Claude AI
+
+- Built by **Tal Segal** with React, TypeScript, and [Vite](https://vitejs.dev/).
+- Developed with the help of **Anthropic Claude**.

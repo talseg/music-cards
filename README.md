@@ -36,7 +36,7 @@ Print the deck, cut the cards out, and play: scan a QR code to hear the song, gu
 
 <br>
 
-- A paid **[Spotify Premium](https://open.spotify.com/)** account (required for playback).
+- A paid **[Spotify Premium](https://open.spotify.com/)** account.
 - **[Git](https://git-scm.com/)**
 - **[Node.js LTS](https://nodejs.org/)**
 
@@ -98,7 +98,7 @@ VITE_DATES_ENABLED=true
 PERPLEXITY_API_KEY=your_perplexity_api_key
 ```
 
-> 🔒 `SPOTIFY_CLIENT_SECRET` and `PERPLEXITY_API_KEY` have **no** `VITE_` prefix on purpose — they're read server-side by the Vite proxy and never reach the browser.
+> 🔒 `SPOTIFY_CLIENT_SECRET` and `PERPLEXITY_API_KEY` have **no** `VITE_` prefix on purpose — they are read server-side by the Vite proxy and never reach the browser.
 
 </details>
 

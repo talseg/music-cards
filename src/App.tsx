@@ -147,6 +147,76 @@ const ErrorText = styled.div`
   margin-top: 2px;
 `
 
+// ─── Web-search toggle + confirm modal ───────────────────────────────────────
+
+const ToggleLabel = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+  cursor: pointer;
+`
+
+const Toggle = styled.button<{ $on: boolean }>`
+  position: relative;
+  width: 42px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 11px;
+  border: 1px solid ${p => (p.$on ? '#2a6' : '#ccc')};
+  background: ${p => (p.$on ? '#2a6' : '#e0e0e0')};
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: ${p => (p.$on ? '21px' : '1px')};
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: left 0.15s;
+  }
+`
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`
+
+const ModalBox = styled.div`
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  text-align: center;
+`
+
+const ModalText = styled.p`
+  font-size: 0.95rem;
+  color: #333;
+  margin: 0 0 20px;
+  line-height: 1.45;
+`
+
+const ModalActions = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+`
+
 // ─── Auth bar ───────────────────────────────────────────────────────────────
 
 const AuthBar = styled.div`
@@ -717,6 +787,11 @@ function App() {
     useState<'idle' | 'running' | 'pausing' | 'paused'>('idle')
   const pauseRef = useRef(false)
   const [webSearchingId, setWebSearchingId] = useState<string | null>(null)
+  // Global gate for the per-song web-search buttons. Starts disabled every load
+  // (not persisted) so a paid feature is never silently on. Enabling it requires
+  // confirming the cost modal; disabling is immediate.
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false)
+  const [confirmWebSearch, setConfirmWebSearch] = useState(false)
   // Lifetime running total of AI-query spend (USD), persisted to localStorage so
   // it survives reloads. Editable by hand to sync across ports/machines.
   const [totalCost, setTotalCost] = useState(() => {
@@ -993,6 +1068,16 @@ function App() {
     }
   }
 
+  // Toggle the web-search gate. Turning it ON asks for confirmation first (the
+  // modal flips it on); turning it OFF is immediate.
+  const handleToggleWebSearch = () => {
+    if (webSearchEnabled) {
+      setWebSearchEnabled(false)
+    } else {
+      setConfirmWebSearch(true)
+    }
+  }
+
   const handleWebSearch = async (card: CardData) => {
     const id = trackIdOf(card)
     if (webSearchingId === id) return
@@ -1146,6 +1231,16 @@ function App() {
         </Button>
         {DATES_ENABLED && (
           <>
+            <ToggleLabel title={webSearchEnabled ? 'Disable web search' : 'Enable web search (≈0.5¢ per query)'}>
+              Web search
+              <Toggle
+                type="button"
+                $on={webSearchEnabled}
+                role="switch"
+                aria-checked={webSearchEnabled}
+                onClick={handleToggleWebSearch}
+              />
+            </ToggleLabel>
             <AuthStatus>Total $</AuthStatus>
             <input
               type="text"
@@ -1325,7 +1420,7 @@ function App() {
                     >
                     ⧉
                   </CopyBtn>
-                  {DATES_ENABLED && (
+                  {DATES_ENABLED && webSearchEnabled && (
                     <SearchBtn
                       title="Web search for release year"
                       disabled={webSearchingId === trackIdOf(card)}
@@ -1382,6 +1477,29 @@ function App() {
           </div>
         ))}
       </HiddenCards>
+
+      {confirmWebSearch && (
+        <ModalOverlay onClick={() => setConfirmWebSearch(false)}>
+          <ModalBox onClick={e => e.stopPropagation()}>
+            <ModalText>
+              Web search can be expensive (0.5 cent per query). Are you sure you
+              want to enable it?
+            </ModalText>
+            <ModalActions>
+              <Button
+                $primary
+                onClick={() => {
+                  setWebSearchEnabled(true)
+                  setConfirmWebSearch(false)
+                }}
+              >
+                Yes
+              </Button>
+              <Button onClick={() => setConfirmWebSearch(false)}>No</Button>
+            </ModalActions>
+          </ModalBox>
+        </ModalOverlay>
+      )}
     </AppWrapper>
   )
 }

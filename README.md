@@ -2,33 +2,16 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
-A modern implementation of the classic **2048 game**, built with **React + TypeScript**.  
-This version challenges you to go **beyond 2048 all the way to 65,536**,
-<br/>
-so the target board is:
-</br>
-![Full Board](public/fullBoard.png)</br>
-Built with ❤️ by Tal and Inbar Segal. August 2025.
+
 
 ---
 
-🎮 **Play it now in your browser:**  
-👉 [2048 to 65k on GitHub Pages](https://talseg.github.io/react-2048/)
+
 
 ---
 
 ## 🎮 Features
-- Supports Destop and phone browsers.
-- Strives to exercise clean code principles:
-  - Prefer readability over short or overly clever code.
-  - Separate logic from UI for clarity and maintainability.
-  - Keep developer tools clean — no warnings, no unnecessary logs or noise.
-- Swipe support (keyboard and touch).
-- Persistent board state, so you can continue where left off.
-- Unlimited Undo system.
-- Optional hints to help with strategy.
-- **Storybook integration** for developing UI components in isolation.
-- 100% open code for learning and contributions.
+
 
 ---
 

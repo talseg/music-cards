@@ -20,6 +20,15 @@ Print the deck, cut the cards out, and play: scan a QR code to hear the song, gu
 
 ---
 
+## 🎴 Playing the cards
+
+Once your deck is printed, there are two ways to play:
+
+- **📱 Scan with your phone** — Scanning a card's QR code opens the Spotify app and starts playing the song. Works with any QR scanner.
+- **🎯 Use the companion player** — For a smoother experience, my separate **[Music Cards Player](https://github.com/talseg/music-cards-player)** project lets you play and guess each song's details **without opening the Spotify app**.
+
+---
+
 ## 🎮 Features
 
 - 🎧 Import songs from a **Spotify playlist** or your **Liked Songs**.
@@ -194,5 +203,3 @@ This project is released under the [MIT License](./LICENSE).
 - Developed with the help of **Anthropic Claude**.
 
 ---
-
-*Spotify® is a registered trademark of Spotify AB. All other trademarks are the property of their respective owners.*

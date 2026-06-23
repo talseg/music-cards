@@ -116,9 +116,16 @@ npm run preview    # → https://<your-ip-address>:4173
 
 ---
 
-## 🤖 AI Dates (optional)
+## 🤖 AI Dates (advanced — optional)
 
-Filling in each song's original release year by hand is tedious, so Music Cards can look it up with AI.
+A powerful but optional feature that auto-fills each song's original release year, so you don't have to research dates by hand. Most users won't need it — but it's there if you want it. Expand below to set it up.
+
+<details>
+<summary><strong>⚙️ Setup, options &amp; costs</strong></summary>
+
+<br>
+
+Lookups run through the **[Perplexity Agent API](https://docs.perplexity.ai/)**, using the cheapest available model — **`google/gemini-3.1-flash-lite`**. You can switch to a different model by changing the `MODEL` variable in [`src/perplexityDates.ts`](./src/perplexityDates.ts).
 
 **Enable it** by setting both of these in your `.env`:
 
@@ -131,12 +138,14 @@ Once enabled, two options appear:
 
 | Option | What it does | Cost |
 | --- | --- | --- |
-| **Get AI dates** | Bulk-fills years from the AI model's own knowledge. Pause / resume any time. | Very low |
+| **Get AI dates** | Bulk-fills years from the AI model's own knowledge. Pause / resume any time. | ~0.007¢ per song |
 | **Web search** 🔍 | Per-song lookup using a live web search — more accurate for obscure tracks. | ~0.5¢ per query |
 
-> 💡 **Web search is off by default** and must be toggled on (with a confirmation prompt) because each query has a real cost.
+> 💡 **Web search is off by default** and must be toggled on (with a confirmation prompt) — each query costs far more than a regular lookup (≈70×, per the table above).
 
 If `VITE_DATES_ENABLED` is absent or not exactly `true`, the entire AI feature stays hidden.
+
+</details>
 
 ---
 

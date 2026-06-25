@@ -3,11 +3,15 @@ import styled from 'styled-components'
 import { QRCodeSVG } from 'qrcode.react'
 import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
 import { version } from '../package.json'
-import { fetchTrackInfo, type TrackInfo } from './spotify'
+import { fetchTrackInfo } from './spotify'
+import type { CardData, AiDate } from './types'
+import { DATES_ENABLED } from './constants'
+import { trackIdOf } from './helpers'
 import { createAuth, type InitAuthResult } from './auth/spotify-auth'
 import { fetchPlaylistTracks, extractPlaylistId } from './spotify-user'
 import { generatePdf } from './pdfGenerator'
 import { getSuggestedYear } from './perplexityDates'
+import { SongList } from './SongList'
 
 // Create the auth bundle once at module load. The shared module (src/auth) is
 // app-agnostic; everything app-specific about auth lives in this config.
@@ -36,38 +40,12 @@ const CARD_WIDTH_PX = 159
 const CARD_HEIGHT_PX = 222
 const CARD_RADIUS_PX = 8
 
-// Public, browser-readable flag (separate from the proxy-only secret key).
-// The "Get AI dates" feature is fail-closed: hidden unless this is exactly
-// 'true'. Anything else (absent / other value) leaves the feature off.
-const DATES_ENABLED = import.meta.env.VITE_DATES_ENABLED === 'true'
-
 // App-data localStorage keys. These deliberately live OUTSIDE the 'music-cards:'
 // auth namespace: clearStoredAuth() (on logout, and on the expired/stale-token
 // paths during mount) sweeps every key under that prefix, which would otherwise
 // wipe these too.
 const TOTAL_COST_KEY = 'music-cards-app:aiDatesTotalCost'
 const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CardData {
-  id: number
-  spotifyUri: string
-  spotifyYear: string
-  trackInfo: TrackInfo
-}
-
-// Transient AI-date result for one song, keyed by Spotify track id. Deliberately
-// NOT part of CardData and NOT persisted (resets on reload). Entries are kept
-// when a song is removed, so re-adding it restores its previous AI result rather
-// than re-querying. `year` holds the parsed 4-digit year, or the literal 'Error'
-// marker on a failed call.
-interface AiDate {
-  year: 'Error' | 'Unknown' | number
-  // Cumulative cost (USD) of every query run on this song — the initial
-  // "Get AI dates" plus each subsequent web search.
-  cost: number
-}
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 
@@ -282,212 +260,6 @@ const DisabledHint = styled.span`
   align-items: center;
   gap: 10px;
   flex: 1;
-`
-
-// ─── Song List ────────────────────────────────────────────────────────────────
-
-const ListPanel = styled.div`
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  overflow: hidden;
-`
-
-const DISPLAY_LONG_LIST = true;
-const LIST_HEIGHT = DISPLAY_LONG_LIST ? 650 : 192;
-
-const ListScroll = styled.div`
-  max-height: ${LIST_HEIGHT}px;
-  overflow-y: auto;
-  background: white;
-`
-
-const ListEmpty = styled.div`
-  padding: 20px 16px;
-  font-size: 0.85rem;
-  color: #aaa;
-  text-align: center;
-`
-
-const ListItem = styled.div<{ $selected: boolean }>`
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  background: ${p => p.$selected ? '#e8f4ff' : 'white'};
-  font-weight: ${p => p.$selected ? 700 : 400};
-  color: ${p => p.$selected ? '#0052cc' : '#333'};
-  gap: 8px;
-  user-select: none;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &:hover {
-    background: ${p => p.$selected ? '#d4ecff' : '#f7f7f7'};
-  }
-`
-
-const ListItemNum = styled.span`
-  font-size: 0.75rem;
-  color: #aaa;
-  width: 22px;
-  flex-shrink: 0;
-  text-align: right;
-`
-
-const ListItemName = styled.span`
-  flex: 1;
-  font-size: 0.88rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`
-
-const ListItemArtist = styled.span`
-  font-size: 0.8rem;
-  color: #777;
-  flex-shrink: 0;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`
-
-const ListItemYear = styled.span`
-  font-size: 0.78rem;
-  color: #aaa;
-  flex-shrink: 0;
-  width: 36px;
-  text-align: right;
-`
-
-const ListItemYearSource = styled.span<{ $match: boolean | null; $clickable: boolean }>`
-  font-size: 0.78rem;
-  color: ${p => p.$match === null ? '#888' : p.$match ? '#2a6' : '#cc0000'};
-  font-weight: ${p => p.$match === null ? 400 : 600};
-  flex-shrink: 0;
-  width: 44px;
-  text-align: right;
-  cursor: ${p => p.$clickable ? 'pointer' : 'default'};
-`
-
-const ListItemCard = styled.span`
-  font-size: 0.78rem;
-  color: #555;
-  flex-shrink: 0;
-  width: 44px;
-  text-align: right;
-`
-
-const ListItemCost = styled.span`
-  font-size: 0.72rem;
-  color: #aaa;
-  flex-shrink: 0;
-  width: 48px;
-  text-align: right;
-`
-
-// Header row above the song list. Column widths mirror the cells in each
-// ListItem so labels sit over their values.
-const ListHeader = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 6px 12px;
-  gap: 8px;
-  background: #f7f7f7;
-  border-bottom: 1px solid #e4e4e4;
-  font-size: 0.68rem;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  user-select: none;
-`
-
-const HeadNum = styled.span`width: 22px; flex-shrink: 0; text-align: right;`
-const HeadName = styled.span`flex: 1;`
-const HeadArtist = styled.span`width: 160px; flex-shrink: 0;`
-const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
-const HeadAi = styled.span`width: 26px; flex-shrink: 0; text-align: right;`
-const HeadCard = styled.span`width: 54px; flex-shrink: 0; text-align: right;`
-const HeadCost = styled.span`width: 56px; flex-shrink: 0; text-align: right;`
-const HeadSearch = styled.span`width: 28px; flex-shrink: 0;`
-const HeadCopy = styled.span`width: 22px; flex-shrink: 0;`
-const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
-
-const CopyBtn = styled.button`
-  font-size: 0.75rem;
-  width: 22px;
-  height: 22px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  background: white;
-  color: #999;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding: 0;
-  line-height: 1;
-
-  &:hover {
-    background: #e8f4ff;
-    border-color: #99c;
-    color: #33c;
-  }
-`
-
-const SearchBtn = styled.button`
-  font-size: 0.7rem;
-  width: 22px;
-  height: 22px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  background: white;
-  color: #999;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding: 0;
-  line-height: 1;
-
-  &:hover:not(:disabled) {
-    background: #e8f0ff;
-    border-color: #99c;
-    color: #33c;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-`
-
-const DeleteBtn = styled.button`
-  font-size: 1rem;
-  width: 22px;
-  height: 22px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  background: white;
-  color: #999;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding: 0;
-  line-height: 1;
-
-  &:hover {
-    background: #fee;
-    border-color: #f99;
-    color: #c33;
-  }
 `
 
 // ─── Bottom Controls ──────────────────────────────────────────────────────────
@@ -803,9 +575,6 @@ function App() {
   // intermediate states like "0." ) isn't fought by the numeric state.
   const [totalCostInput, setTotalCostInput] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  // Maps each card id to its <ListItem> DOM node, so we can scroll the
-  // selected song into view in the list whenever the selection changes.
-  const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   const selectedCard = cards.find(c => c.id === selectedId) ?? null
   const selectedIndex = selectedCard ? cards.findIndex(c => c.id === selectedId) : -1
@@ -829,14 +598,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem(TOTAL_COST_KEY, String(totalCost))
   }, [totalCost])
-
-  // Whenever the selected song changes, make sure its row is visible in the
-  // list. Covers adding a song, clicking a preview card, and the sheet arrows.
-  useEffect(() => {
-    if (selectedId === null) return
-    const node = listItemRefs.current.get(selectedId)
-    node?.scrollIntoView({ block: 'nearest' })
-  }, [selectedId])
 
   // On mount: handle the OAuth callback, or silently validate a stored token.
   // The actual work is memoized inside the shared auth module (getInitAuth),
@@ -994,9 +755,6 @@ function App() {
     setSelectedId(null)
     setError(null)
   }
-
-  // Spotify track id for a card (the part after the last ':' in the URI).
-  const trackIdOf = (card: CardData) => card.spotifyUri.split(':').pop() || ''
 
   // A song is "unqueried" iff it has no aiDates entry yet. The button is enabled
   // exactly when at least one song is unqueried.
@@ -1346,103 +1104,17 @@ function App() {
         {error && <ErrorText>{error}</ErrorText>}
 
         {/* Song list */}
-        <ListPanel className='list_panel'>
-          {DATES_ENABLED && cards.length > 0 && (
-            <ListHeader>
-              <HeadNum>#</HeadNum>
-              <HeadName>Song</HeadName>
-              <HeadArtist>Artist</HeadArtist>
-              <HeadSpotify>Spotify</HeadSpotify>
-              <HeadAi>AI</HeadAi>
-              <HeadCard>Card</HeadCard>
-              <HeadCost>cents</HeadCost>
-              <HeadSearch />
-              <HeadCopy />
-              <HeadDelete />
-            </ListHeader>
-          )}
-          <ListScroll className='list_scroll'>
-            {cards.length === 0
-              ? <ListEmpty>No songs yet — paste a Spotify URL above and press Add</ListEmpty>
-              : cards.map((card, idx) => {
-                const ai = DATES_ENABLED ? aiDates.get(trackIdOf(card)) : undefined
-                const aiError = typeof ai?.year === 'string'
-                const spotifyMatch = card.spotifyYear === card.trackInfo.year.trim()
-                const aiMatch = !!ai && !aiError &&
-                  String(ai.year) === card.trackInfo.year.trim()
-                return (
-                <ListItem
-                  key={card.id}
-                  ref={node => {
-                    if (node) listItemRefs.current.set(card.id, node)
-                    else listItemRefs.current.delete(card.id)
-                  }}
-                  $selected={card.id === selectedId}
-                  onClick={() => setSelectedId(card.id)}
-                >
-                  <ListItemNum>{idx + 1}</ListItemNum>
-                  <ListItemName>{card.trackInfo.name}</ListItemName>
-                  <ListItemArtist>{card.trackInfo.artist}</ListItemArtist>
-                  {DATES_ENABLED && (
-                    <>
-                      <ListItemYearSource
-                        $match={spotifyMatch}
-                        $clickable={!spotifyMatch}
-                        onClick={!spotifyMatch ? () => {
-                          updateCardField(card.id, 'year', card.spotifyYear)
-                        } : undefined}
-                      >
-                        {card.spotifyYear}
-                      </ListItemYearSource>
-                      <ListItemYearSource
-                        $match={ai ? aiMatch : null}
-                        $clickable={!!ai && !aiError && !aiMatch}
-                        onClick={ai && !aiError && !aiMatch ? () => {
-                          updateCardField(card.id, 'year', String(ai.year))
-                        } : undefined}
-                      >
-                        {ai ? ai.year : '----'}
-                      </ListItemYearSource>
-                      <ListItemCard>{card.trackInfo.year}</ListItemCard>
-                      <ListItemCost>
-                        {ai ? (ai.cost * 100).toFixed(3) : ''}
-                      </ListItemCost>
-                    </>
-                  )}
-                  {!DATES_ENABLED && (
-                    <ListItemYear>{card.trackInfo.year}</ListItemYear>
-                  )}
-                  <CopyBtn
-                    title="Copy song name search string to clipboard"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`song ${card.trackInfo.name} ${card.trackInfo.artist} first official release date`)
-                    }}
-                    >
-                    ⧉
-                  </CopyBtn>
-                  {DATES_ENABLED && webSearchEnabled && (
-                    <SearchBtn
-                      title="Web search for release year"
-                      disabled={webSearchingId === trackIdOf(card)}
-                      onClick={() => {
-                        handleWebSearch(card)
-                      }}
-                    >
-                      {webSearchingId === trackIdOf(card) ? '…' : '🔍'}
-                    </SearchBtn>
-                  )}
-                  <DeleteBtn
-                    title="Remove"
-                    onClick={e => { e.stopPropagation(); handleDelete(card.id) }}
-                  >
-                    −
-                  </DeleteBtn>
-                </ListItem>
-                )
-              })
-            }
-          </ListScroll>
-        </ListPanel>
+        <SongList
+          cards={cards}
+          selectedId={selectedId}
+          aiDates={aiDates}
+          webSearchEnabled={webSearchEnabled}
+          webSearchingId={webSearchingId}
+          onSelect={setSelectedId}
+          onApplyYear={(id, year) => updateCardField(id, 'year', year)}
+          onWebSearch={handleWebSearch}
+          onDelete={handleDelete}
+        />
       </TopPanel>
 
       {/* Sheet preview with flanking scroll buttons */}

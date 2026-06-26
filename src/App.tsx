@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
 import styled from 'styled-components'
-import { fetchTrackInfo } from './logic/spotify'
+import { fetchTrackInfo } from './spotify/spotify'
 import type { CardData } from './common/types'
 import { CARDS_PER_SHEET } from './common/constants'
-import { generatePdf } from './logic/pdfGenerator'
+import { generatePdf } from './pdfGenerator'
 import { SongList } from './components/SongList'
 import { SongCard } from './components/SongCard'
 import { ControlBar } from './components/ControlBar'
 import { Button } from './common/shared.styles'
 import { useAuth, sdk, getRedirectUri } from './auth/useAuth'
-import { useAiDates } from './logic/useAiDates'
-import { extractPlaylistId, fetchPlaylistTracks } from './logic/spotify-user'
+import { useAiDates } from './ai/useAiDates'
+import { extractPlaylistId, fetchPlaylistTracks } from './spotify/spotify-user'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

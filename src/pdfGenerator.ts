@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
-import type { TrackInfo } from './spotify'
+import type { TrackInfo } from './spotify/spotify'
 
 // Standard playing card: 63.5mm × 88.9mm
 const CARD_W_MM = 63.5

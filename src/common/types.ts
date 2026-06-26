@@ -1,4 +1,4 @@
-import type { TrackInfo } from '../logic/spotify'
+import type { TrackInfo } from '../spotify/spotify'
 
 export interface CardData {
   id: number

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import styled from 'styled-components'
-import { QRCodeSVG } from 'qrcode.react'
 import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
 import { version } from '../package.json'
 import { fetchTrackInfo } from './spotify'
@@ -12,6 +11,7 @@ import { fetchPlaylistTracks, extractPlaylistId } from './spotify-user'
 import { generatePdf } from './pdfGenerator'
 import { getSuggestedYear } from './perplexityDates'
 import { SongList } from './SongList'
+import { SongCard, CardPlaceholder } from './SongCard'
 
 // Create the auth bundle once at module load. The shared module (src/auth) is
 // app-agnostic; everything app-specific about auth lives in this config.
@@ -36,8 +36,6 @@ type AuthState =
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CARDS_PER_SHEET = 4
-const CARD_WIDTH_PX = 159
-const CARD_HEIGHT_PX = 222
 const CARD_RADIUS_PX = 8
 
 // App-data localStorage keys. These deliberately live OUTSIDE the 'music-cards:'
@@ -376,90 +374,6 @@ const CardPairWrapper = styled.div<{ $selected: boolean; $clickable?: boolean }>
   @media print {
     outline: none;
   }
-`
-
-const Card = styled.div`
-  width: ${CARD_WIDTH_PX}px;
-  height: ${CARD_HEIGHT_PX}px;
-  border: 1px solid #333;
-  border-radius: ${CARD_RADIUS_PX}px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  overflow: hidden;
-`
-
-const CardPlaceholder = styled(Card)`
-  border: 1px dashed #ccc;
-  background: #fafafa;
-`
-
-const CardNote = styled.div`
-  font-size: 2.0rem;
-  color: #3fdf0a;
-  margin-bottom: 4px;
-`
-
-const SongName = styled.div`
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #cd0000;
-  text-align: center;
-  padding: 0 12px;
-  margin-bottom: 6px;
-  word-break: break-word;
-  cursor: text;
-  outline: none;
-  min-width: 20px;
-
-  &:hover { outline: 1px dashed #ccc; }
-  &:focus { outline: 1px dashed #999; }
-`
-
-const ArtistName = styled.div`
-  font-size: 0.8rem;
-  color: #002a9c;
-  text-align: center;
-  padding: 0 12px;
-  margin-bottom: 10px;
-  cursor: text;
-  outline: none;
-  min-width: 20px;
-
-  &:hover { outline: 1px dashed #ccc; }
-  &:focus { outline: 1px dashed #999; }
-`
-
-const YearText = styled.div`
-  font-size: 0.75rem;
-  color: #0f3460;
-  font-weight: 500;
-  cursor: text;
-  outline: none;
-  min-width: 20px;
-
-  &:hover { outline: 1px dashed #ccc; }
-  &:focus { outline: 1px dashed #999; }
-`
-
-const QrCardContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transform: rotate(180deg);
-  width: 100%;
-  height: 100%;
-  gap: 12px;
-`
-
-const GameCardLabel = styled.div`
-  font-size: 0.75rem;
-  color: #3fdf0a;
-  font-weight: 500;
-  letter-spacing: 1px;
 `
 
 // Hidden container: renders all cards off-screen for PDF capture
@@ -871,36 +785,6 @@ function App() {
 
   // ─── Card renderers ──────────────────────────────────────────────────────
 
-  const renderFrontCard = (card: CardData, attrs?: Record<string, string>) => (
-    <Card {...attrs}>
-      <CardNote>♫</CardNote>
-      <SongName
-        contentEditable
-        suppressContentEditableWarning
-        onBlur={e => updateCardField(card.id, 'name', e.currentTarget.textContent ?? '')}
-      >{card.trackInfo.name}</SongName>
-      <ArtistName
-        contentEditable
-        suppressContentEditableWarning
-        onBlur={e => updateCardField(card.id, 'artist', e.currentTarget.textContent ?? '')}
-      >{card.trackInfo.artist}</ArtistName>
-      <YearText
-        contentEditable
-        suppressContentEditableWarning
-        onBlur={e => updateCardField(card.id, 'year', e.currentTarget.textContent ?? '')}
-      >{card.trackInfo.year}</YearText>
-    </Card>
-  )
-
-  const renderBackCard = (card: CardData, attrs?: Record<string, string>) => (
-    <Card key={`qr-${card.id}`} {...attrs}>
-      <QrCardContent>
-        <GameCardLabel>My Song Cards</GameCardLabel>
-        <QRCodeSVG value={card.spotifyUri} size={120} />
-      </QrCardContent>
-    </Card>
-  )
-
   const renderCardPair = (card: CardData, selected: boolean) => (
     <CardPairWrapper
       key={`pair-${card.id}`}
@@ -908,8 +792,11 @@ function App() {
       $clickable
       onClick={() => setSelectedId(card.id)}
     >
-      {renderFrontCard(card, { 'data-pdf-detail': String(card.id) })}
-      {renderBackCard(card, { 'data-pdf-qr': String(card.id) })}
+      <SongCard
+        editable
+        card={card}
+        onFieldChange={(field, value) => updateCardField(card.id, field, value)}
+      />
     </CardPairWrapper>
   )
 
@@ -1144,8 +1031,7 @@ function App() {
       <HiddenCards aria-hidden="true">
         {hiddenCards.map(card => (
           <div key={card.id}>
-            {renderFrontCard(card, { 'data-pdf-detail': String(card.id) })}
-            {renderBackCard(card, { 'data-pdf-qr': String(card.id) })}
+            <SongCard editable={false} card={card} />
           </div>
         ))}
       </HiddenCards>

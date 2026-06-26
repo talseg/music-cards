@@ -3,7 +3,9 @@ import { fetchTrackInfo } from '../spotify/spotify'
 import type { CardData } from '../common/types'
 import { generatePdf } from '../pdfGenerator'
 import { sdk } from '../auth/useAuth'
-import { extractPlaylistId, fetchPlaylistTracks } from '../spotify/spotify-user'
+import { fetchPlaylistTracks } from '../spotify/spotify-user'
+import type { PlaylistTrack } from '../spotify/spotify-user'
+import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
 
 // App-data localStorage key. Deliberately lives OUTSIDE the 'music-cards:' auth
 // namespace: clearStoredAuth() (on logout, and on the expired/stale-token paths
@@ -11,25 +13,15 @@ import { extractPlaylistId, fetchPlaylistTracks } from '../spotify/spotify-user'
 // this too.
 const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
 
-function extractTrackId(input: string): string {
-  const trimmed = input.trim()
-  const urlMatch = trimmed.match(/open\.spotify\.com\/track\/([A-Za-z0-9]+)/)
-  if (urlMatch) return urlMatch[1]
-  if (trimmed.includes(':')) return trimmed.split(':').pop() || trimmed
-  return trimmed
-}
-
 // Owns the song domain: the card list, selection, the persisted song counter,
 // and every operation that mutates them (add / import / delete / edit / clear /
 // PDF export). Mirrors useAuth / useAiDates — App just consumes what it returns.
 // `loggedIn` comes from useAuth and gates the playlist-import feature.
 export function useSongs(loggedIn: boolean) {
-  const [urlInput, setUrlInput] = useState('')
-  const [playlistInput, setPlaylistInput] = useState('')
-  const [playlistLoading, setPlaylistLoading] = useState(false)
+  const [input, setInput] = useState('')
+  const [importing, setImporting] = useState(false)
   const [cards, setCards] = useState<CardData[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [songCounter, setSongCounter] = useState(() => {
     const stored = localStorage.getItem(SONG_COUNTER_KEY)
@@ -46,20 +38,43 @@ export function useSongs(loggedIn: boolean) {
     localStorage.setItem(SONG_COUNTER_KEY, String(songCounter))
   }, [songCounter])
 
-  const handleImportPlaylist = async () => {
-    if (!loggedIn) return
-    const raw = playlistInput.trim()
-    if (!raw) return
-    const playlistId = extractPlaylistId(raw)
-    if (!playlistId) return
+  const link = parseSpotifyLink(input)
+  const importDisabled =
+    importing || !input.trim() || (link !== null && LINK_NEEDS_LOGIN[link.kind] && !loggedIn)
+  const importDisabledReason =
+    link !== null && LINK_NEEDS_LOGIN[link.kind] && !loggedIn
+      ? 'Must be logged in to import this link'
+      : ''
 
-    setPlaylistLoading(true)
+  // Fetch tracks for the pasted link and add the new ones to the list. The import
+  // type is inferred from the link; track & playlist are supported, album & liked
+  // are recognized but not yet implemented.
+  const handleImport = async () => {
+    if (!link) {
+      setError('Unrecognized Spotify link. Paste a track or playlist URL.')
+      return
+    }
+    if (LINK_NEEDS_LOGIN[link.kind] && !loggedIn) return
+    if (link.kind === 'album' || link.kind === 'liked') {
+      setError(link.kind === 'album'
+        ? 'Album import is coming soon.'
+        : 'Liked songs import is coming soon.')
+      return
+    }
+
+    setImporting(true)
     setError(null)
 
     try {
-      const tracks = await fetchPlaylistTracks(sdk, playlistId)
-      const existing = new Set(cards.map(c => c.spotifyUri.split(':').pop() || ''))
+      let tracks: PlaylistTrack[]
+      if (link.kind === 'track') {
+        const trackInfo = await fetchTrackInfo(link.id!)
+        tracks = [{ trackId: link.id!, trackInfo }]
+      } else {
+        tracks = await fetchPlaylistTracks(sdk, link.id!)
+      }
 
+      const existing = new Set(cards.map(c => c.spotifyUri.split(':').pop() || ''))
       const newCards: CardData[] = []
       for (const t of tracks) {
         if (existing.has(t.trackId)) continue
@@ -73,49 +88,21 @@ export function useSongs(loggedIn: boolean) {
       }
 
       if (newCards.length === 0) {
-        setError('No new songs to add (all tracks are already in the list).')
+        setError(link.kind === 'track'
+          ? 'That song is already in the list.'
+          : 'No new songs to add (all tracks are already in the list).')
         return
       }
 
       setCards(prev => [...prev, ...newCards])
       setSelectedId(newCards[0].id)
       setSongCounter(prev => prev + newCards.length)
-      setPlaylistInput('')
+      setInput('')
+      if (link.kind === 'track') inputRef.current?.focus()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to import playlist')
+      setError(e instanceof Error ? e.message : 'Failed to import')
     } finally {
-      setPlaylistLoading(false)
-    }
-  }
-
-  const handleAdd = async () => {
-    const raw = urlInput.trim()
-    if (!raw) return
-    const trackId = extractTrackId(raw)
-    if (!trackId) return
-
-    const existing = new Set(cards.map(c => c.spotifyUri.split(':').pop() || ''))
-    if (existing.has(trackId)) {
-      setError('That song is already in the list.')
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const trackInfo = await fetchTrackInfo(trackId)
-      const id = nextId.current++
-      const newCard: CardData = { id, spotifyUri: `spotify:track:${trackId}`, spotifyYear: trackInfo.year, trackInfo }
-      setCards(prev => [...prev, newCard])
-      setSelectedId(id)
-      setUrlInput('')
-      setSongCounter(prev => prev + 1)
-      inputRef.current?.focus()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch track info')
-    } finally {
-      setLoading(false)
+      setImporting(false)
     }
   }
 
@@ -172,18 +159,16 @@ export function useSongs(loggedIn: boolean) {
     setSelectedId,
     songCounter,
     setSongCounter,
-    urlInput,
-    setUrlInput,
-    playlistInput,
-    setPlaylistInput,
-    loading,
-    playlistLoading,
+    input,
+    setInput,
+    importing,
+    importDisabled,
+    importDisabledReason,
     pdfLoading,
     error,
     clearError,
     inputRef,
-    handleImportPlaylist,
-    handleAdd,
+    handleImport,
     handleDelete,
     updateCardField,
     handleGeneratePdf,

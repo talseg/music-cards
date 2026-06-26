@@ -87,18 +87,16 @@ function App() {
     setSelectedId,
     songCounter,
     setSongCounter,
-    urlInput,
-    setUrlInput,
-    playlistInput,
-    setPlaylistInput,
-    loading,
-    playlistLoading,
+    input,
+    setInput,
+    importing,
+    importDisabled,
+    importDisabledReason,
     pdfLoading,
     error,
     clearError,
     inputRef,
-    handleImportPlaylist,
-    handleAdd,
+    handleImport,
     handleDelete,
     updateCardField,
     handleGeneratePdf,
@@ -143,46 +141,25 @@ function App() {
           </AuthError>
         )}
 
-        {/* Playlist import row */}
+        {/* Combined import row: type inferred from the pasted link */}
         <InputRow>
-          <FieldLabel htmlFor="playlist-url">Export playlist</FieldLabel>
-          <DisabledHint title={loggedIn ? '' : 'Must be logged in to use the playlist feature'}>
+          <FieldLabel htmlFor="spotify-link">Add / Import</FieldLabel>
+          <DisabledHint title={importDisabledReason}>
             <Input
-              id="playlist-url"
+              id="spotify-link"
+              ref={inputRef}
               type="text"
               autoComplete="off"
-              value={playlistInput}
-              onChange={e => setPlaylistInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleImportPlaylist() }}
-              placeholder="https://open.spotify.com/playlist/…"
-              disabled={!loggedIn || playlistLoading}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleImport() }}
+              placeholder="Paste a Spotify track or playlist link…"
+              disabled={importing}
             />
-            <Button
-              onClick={handleImportPlaylist}
-              disabled={!loggedIn || playlistLoading || !playlistInput.trim()}
-            >
-              {playlistLoading ? 'Importing…' : 'Go'}
+            <Button $primary onClick={handleImport} disabled={importDisabled}>
+              {importing ? 'Adding…' : 'Add'}
             </Button>
           </DisabledHint>
-        </InputRow>
-
-        {/* Add song row */}
-        <InputRow>
-          <FieldLabel htmlFor="song-url">Add song</FieldLabel>
-          <Input
-            id="song-url"
-            ref={inputRef}
-            type="text"
-            autoComplete="off"
-            value={urlInput}
-            onChange={e => setUrlInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
-            placeholder="https://open.spotify.com/track/…"
-            disabled={loading}
-          />
-          <Button $primary onClick={handleAdd} disabled={loading || !urlInput.trim()}>
-            {loading ? 'Loading…' : 'Add'}
-          </Button>
         </InputRow>
 
         {error && <ErrorText>{error}</ErrorText>}

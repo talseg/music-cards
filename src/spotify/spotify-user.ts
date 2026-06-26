@@ -15,15 +15,6 @@ export interface PlaylistTrack {
   trackInfo: TrackInfo
 }
 
-// Extract a playlist ID from a URL, URI, or bare ID.
-export function extractPlaylistId(input: string): string {
-  const trimmed = input.trim()
-  const urlMatch = trimmed.match(/open\.spotify\.com\/playlist\/([A-Za-z0-9]+)/)
-  if (urlMatch) return urlMatch[1]
-  if (trimmed.includes(':')) return (trimmed.split(':').pop() || trimmed).split('?')[0]
-  return trimmed.split('?')[0]
-}
-
 // Fetch all tracks from a playlist, following pagination. Requires a logged-in
 // SDK instance — but calls the endpoint directly rather than via the SDK: the
 // SDK (v1.2.0) still uses the deprecated /tracks endpoint, which returns 403

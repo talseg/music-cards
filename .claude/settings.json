@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 40; \"exit: $LASTEXITCODE\")",
+      "Read(//tmp/**)",
+      "Bash(netstat -ano)",
+      "Bash(curl -sk https://localhost:5173/ -o /dev/null -w \"%{http_code}\\\\n\" --max-time 5)"
+    ]
+  }
+}

@@ -1,40 +1,26 @@
 import { useState, useRef, useEffect } from 'react'
 import styled from 'styled-components'
-import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
 import { fetchTrackInfo } from './spotify'
-import type { CardData, AiDate, AuthState, AiStatus } from './types'
-import { DATES_ENABLED, CARDS_PER_SHEET } from './constants'
-import { trackIdOf } from './helpers'
-import { createAuth, type InitAuthResult } from './auth/spotify-auth'
+import type { CardData } from './types'
+import { CARDS_PER_SHEET } from './constants'
 import { fetchPlaylistTracks, extractPlaylistId } from './spotify-user'
 import { generatePdf } from './pdfGenerator'
-import { getSuggestedYear } from './perplexityDates'
 import { SongList } from './SongList'
 import { SongCard } from './SongCard'
 import { ControlBar } from './ControlBar'
 import { Button } from './shared.styles'
-
-// Create the auth bundle once at module load. The shared module (src/auth) is
-// app-agnostic; everything app-specific about auth lives in this config.
-// Only what the playlist-import feature needs. Deliberately omits the playback
-// scopes the separate player app uses.
-const auth_ = createAuth({
-  clientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID as string,
-  scopes: ['playlist-read-private', 'playlist-read-collaborative'],
-  cachePrefix: 'music-cards:',
-})
-const sdk: SpotifyApi = auth_.sdk
+import { useAuth, sdk, getRedirectUri } from './useAuth'
+import { useAiDates } from './useAiDates'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CARD_WIDTH_PX = 159
 const CARD_RADIUS_PX = 8
 
-// App-data localStorage keys. These deliberately live OUTSIDE the 'music-cards:'
-// auth namespace: clearStoredAuth() (on logout, and on the expired/stale-token
-// paths during mount) sweeps every key under that prefix, which would otherwise
-// wipe these too.
-const TOTAL_COST_KEY = 'music-cards-app:aiDatesTotalCost'
+// App-data localStorage key. Deliberately lives OUTSIDE the 'music-cards:' auth
+// namespace: clearStoredAuth() (on logout, and on the expired/stale-token paths
+// during mount) sweeps every key under that prefix, which would otherwise wipe
+// this too.
 const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -236,41 +222,6 @@ function extractTrackId(input: string): string {
   return trimmed
 }
 
-// Map the shared auth module's neutral result onto this app's AuthState model.
-// (Error classification and the memoized exactly-once init live in
-// src/auth/spotify-auth.ts; messages here are preserved from the previous
-// in-file implementation.)
-function toAuthState(result: InitAuthResult): AuthState {
-  if (result.ok) {
-    return { kind: 'in', user: result.user }
-  }
-  switch (result.kind) {
-    case 'no-session':
-      return { kind: 'out', error: null }
-    case 'expired':
-      // A stored token that no longer works: silently back to logged-out.
-      return { kind: 'out', error: null }
-    case 'stale-callback':
-      // Transient PKCE verifier-not-found: partial state was cleared by the
-      // shared module; user lands on a clean logged-out screen and can retry.
-      return { kind: 'out', error: null }
-    case 'redirect-uri':
-      return {
-        kind: 'out',
-        error: `Login failed: redirect URI not registered.\nAdd ${result.redirectUri} at https://developer.spotify.com/dashboard`,
-      }
-    case 'error':
-      return { kind: 'out', error: `Login failed: ${result.message}` }
-  }
-}
-
-// AI costs come in at 5-decimal (USD) precision. Snap every accumulated value
-// back onto that exact 1e-5 grid at each step so floating-point error can never
-// build up in the stored per-song or lifetime totals.
-function round5(n: number): number {
-  return Math.round(n * 1e5) / 1e5
-}
-
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 let nextId = 1
@@ -279,7 +230,6 @@ function App() {
   const [urlInput, setUrlInput] = useState('')
   const [playlistInput, setPlaylistInput] = useState('')
   const [playlistLoading, setPlaylistLoading] = useState(false)
-  const [auth, setAuth] = useState<AuthState>({ kind: 'checking' })
   const [cards, setCards] = useState<CardData[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -290,32 +240,10 @@ function App() {
     return stored && Number.isFinite(parsed) && parsed >= 1 ? parsed : 1
   })
   const [pdfLoading, setPdfLoading] = useState(false)
-  // AI release-year results, keyed by Spotify track id. Presence of an entry =
-  // "already queried" (so the same song isn't queried twice). Entries persist
-  // when songs are removed, so re-adding a song restores its previous result.
-  const [aiDates, setAiDates] = useState<Map<string, AiDate>>(new Map())
-  // 'running' = a get-dates pass is in flight; 'pausing' = pause requested but the
-  // current song's call is still finishing; 'paused' = a pass was interrupted with
-  // songs still unqueried; 'idle' = nothing running. The pass loop is sequential,
-  // so pausing only stops it between songs (the in-flight call always finishes and
-  // is saved). pauseRef is read inside that loop, where React state wouldn't be
-  // visible — a ref always reflects the latest value.
-  const [aiStatus, setAiStatus] = useState<AiStatus>('idle')
-  const pauseRef = useRef(false)
-  const [webSearchingId, setWebSearchingId] = useState<string | null>(null)
-  // Global gate for the per-song web-search buttons. Starts disabled every load
-  // (not persisted) so a paid feature is never silently on. Enabling it requires
-  // confirming the cost modal; disabling is immediate.
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false)
-  const [confirmWebSearch, setConfirmWebSearch] = useState(false)
-  // Lifetime running total of AI-query spend (USD), persisted to localStorage so
-  // it survives reloads. Editable by hand to sync across ports/machines.
-  const [totalCost, setTotalCost] = useState(() => {
-    const stored = localStorage.getItem(TOTAL_COST_KEY)
-    const parsed = Number(stored)
-    return stored && Number.isFinite(parsed) && parsed >= 0 ? round5(parsed) : 0
-  })
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const { auth, loggedIn, login, logout } = useAuth()
+  const ai = useAiDates(cards, () => setError(null))
 
   const selectedCard = cards.find(c => c.id === selectedId) ?? null
   const selectedIndex = selectedCard ? cards.findIndex(c => c.id === selectedId) : -1
@@ -330,40 +258,9 @@ function App() {
       })
     : []
 
-  const loggedIn = auth.kind === 'in'
-
   useEffect(() => {
     localStorage.setItem(SONG_COUNTER_KEY, String(songCounter))
   }, [songCounter])
-
-  useEffect(() => {
-    localStorage.setItem(TOTAL_COST_KEY, String(totalCost))
-  }, [totalCost])
-
-  // On mount: handle the OAuth callback, or silently validate a stored token.
-  // The actual work is memoized inside the shared auth module (getInitAuth),
-  // so it runs exactly once even though StrictMode invokes this effect twice
-  // in dev. Both invocations await the same promise; whichever is still
-  // mounted applies the result, so the UI always leaves the 'checking' state.
-  useEffect(() => {
-    let cancelled = false
-    auth_.getInitAuth().then(result => {
-      if (!cancelled) setAuth(toAuthState(result))
-    })
-    return () => { cancelled = true }
-  }, [])
-
-  const handleLogin = () => {
-    sdk.authenticate().catch((e: unknown) => {
-      const message = e instanceof Error ? e.message : String(e)
-      setAuth({ kind: 'out', error: `Login failed: ${message}` })
-    })
-  }
-
-  const handleLogout = () => {
-    auth_.clearStoredAuth()
-    setAuth({ kind: 'out', error: null })
-  }
 
   const handleImportPlaylist = async () => {
     if (!loggedIn) return
@@ -497,119 +394,6 @@ function App() {
     setError(null)
   }
 
-  // A song is "unqueried" iff it has no aiDates entry yet. The button is enabled
-  // exactly when at least one song is unqueried.
-  const hasUnqueried = DATES_ENABLED && cards.some(c => !aiDates.has(trackIdOf(c)))
-
-  // Run the AI-dates pass over only the songs that haven't been queried yet.
-  // Sequential (no added delay) so rows fill in live and we stay gentle on rate
-  // limits. Each call's cost accumulates into the persisted lifetime total.
-  //
-  // This is both "start" and "resume": pending is recomputed from the current
-  // aiDates each time, so songs already done in a prior (paused) pass are skipped
-  // and we naturally continue where we stopped.
-  const runDates = async () => {
-    if (aiStatus === 'running' || aiStatus === 'pausing') return
-    const pending = cards.filter(c => !aiDates.has(trackIdOf(c)))
-    if (pending.length === 0) return
-
-    pauseRef.current = false
-    setAiStatus('running')
-    setError(null)
-    let interrupted = false
-    try {
-      for (const card of pending) {
-        // Pause takes effect between songs: a request already in flight always
-        // finishes and is saved; we just stop before starting the next one.
-        if (pauseRef.current) {
-          interrupted = true
-          break
-        }
-        const id = trackIdOf(card)
-        try {
-          const { year, cost } = await getSuggestedYear(
-            card.trackInfo.name,
-            card.trackInfo.artist,
-          )
-          setAiDates(prev => {
-            const next = new Map(prev)
-            next.set(id, { year, cost: round5(cost) })
-            return next
-          })
-          if (cost > 0) setTotalCost(prev => round5(prev + cost))
-        } catch {
-          // Network / HTTP failure: mark the row so it's visibly flagged and
-          // won't be retried on the next press (a non-empty entry = queried).
-          setAiDates(prev => {
-            const next = new Map(prev)
-            next.set(id, { year: 'Error', cost: 0 })
-            return next
-          })
-        }
-      }
-    } finally {
-      // 'paused' only if we stopped with work remaining; a fully-completed pass
-      // (or a pause requested on the last song) ends as 'idle'.
-      setAiStatus(interrupted ? 'paused' : 'idle')
-    }
-  }
-
-  // Button action: while running, a press requests a pause (the loop stops after
-  // the current song). Otherwise it starts or resumes the pass.
-  const handleDatesButton = () => {
-    if (aiStatus === 'running') {
-      // Request a pause; the loop stops after the current song finishes. Show
-      // 'pausing' in the meantime so the label reflects the in-progress stop.
-      pauseRef.current = true
-      setAiStatus('pausing')
-    } else if (aiStatus !== 'pausing') {
-      runDates()
-    }
-  }
-
-  // Toggle the web-search gate. Turning it ON asks for confirmation first (the
-  // modal flips it on); turning it OFF is immediate.
-  const handleToggleWebSearch = () => {
-    if (webSearchEnabled) {
-      setWebSearchEnabled(false)
-    } else {
-      setConfirmWebSearch(true)
-    }
-  }
-
-  const handleWebSearch = async (card: CardData) => {
-    const id = trackIdOf(card)
-    if (webSearchingId === id) return
-    setWebSearchingId(id)
-    try {
-      const { year, cost } = await getSuggestedYear(
-        card.trackInfo.name,
-        card.trackInfo.artist,
-        undefined,
-        true,
-      )
-      // Accumulate this query's cost onto whatever the song already spent, so
-      // the row shows the song's lifetime total across all its queries.
-      setAiDates(prev => {
-        const next = new Map(prev)
-        const prevCost = prev.get(id)?.cost ?? 0
-        next.set(id, { year, cost: round5(prevCost + cost) })
-        return next
-      })
-      if (cost > 0) setTotalCost(prev => round5(prev + cost))
-    } catch {
-      // Failed query: keep the accumulated cost, just flag the year.
-      setAiDates(prev => {
-        const next = new Map(prev)
-        const prevCost = prev.get(id)?.cost ?? 0
-        next.set(id, { year: 'Error', cost: prevCost })
-        return next
-      })
-    } finally {
-      setWebSearchingId(null)
-    }
-  }
-
   // ─── Preview ─────────────────────────────────────────────────────────────
 
   const renderPreview = () => {
@@ -654,19 +438,19 @@ function App() {
       {/* Top control bar: login status + Generate PDF + AI dates + counter + sheets + version */}
       <ControlBar
         auth={auth}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
+        onLogin={login}
+        onLogout={logout}
         onGeneratePdf={handleGeneratePdf}
         pdfLoading={pdfLoading}
         onClearSongs={handleClearSongs}
         cardCount={cards.length}
-        aiStatus={aiStatus}
-        hasUnqueried={hasUnqueried}
-        onDatesButton={handleDatesButton}
-        webSearchEnabled={webSearchEnabled}
-        onToggleWebSearch={handleToggleWebSearch}
-        totalCost={totalCost}
-        onCommitTotalCost={n => setTotalCost(round5(n))}
+        aiStatus={ai.aiStatus}
+        hasUnqueried={ai.hasUnqueried}
+        onDatesButton={ai.onDatesButton}
+        webSearchEnabled={ai.webSearchEnabled}
+        onToggleWebSearch={ai.onToggleWebSearch}
+        totalCost={ai.totalCost}
+        onCommitTotalCost={ai.onCommitTotalCost}
         songCounter={songCounter}
         onSongCounterChange={setSongCounter}
       />
@@ -678,7 +462,7 @@ function App() {
           <AuthError style={{ margin: 0, fontSize: '0.78rem', color: '#aaa' }}>
             Make sure{' '}
             <span style={{ fontFamily: 'monospace', color: '#888' }}>
-              {auth_.getRedirectUri()}
+              {getRedirectUri()}
             </span>{' '}
             is added in your{' '}
             <a
@@ -740,12 +524,12 @@ function App() {
         <SongList
           cards={cards}
           selectedId={selectedId}
-          aiDates={aiDates}
-          webSearchEnabled={webSearchEnabled}
-          webSearchingId={webSearchingId}
+          aiDates={ai.aiDates}
+          webSearchEnabled={ai.webSearchEnabled}
+          webSearchingId={ai.webSearchingId}
           onSelect={setSelectedId}
           onApplyYear={(id, year) => updateCardField(id, 'year', year)}
-          onWebSearch={handleWebSearch}
+          onWebSearch={ai.onWebSearch}
           onDelete={handleDelete}
         />
       </TopPanel>
@@ -782,24 +566,18 @@ function App() {
         ))}
       </HiddenCards>
 
-      {confirmWebSearch && (
-        <ModalOverlay onClick={() => setConfirmWebSearch(false)}>
+      {ai.confirmWebSearch && (
+        <ModalOverlay onClick={ai.closeWebSearchConfirm}>
           <ModalBox onClick={e => e.stopPropagation()}>
             <ModalText>
               Web search can be expensive (0.5 cent per query). Are you sure you
               want to enable it?
             </ModalText>
             <ModalActions>
-              <Button
-                $primary
-                onClick={() => {
-                  setWebSearchEnabled(true)
-                  setConfirmWebSearch(false)
-                }}
-              >
+              <Button $primary onClick={ai.confirmWebSearchYes}>
                 Yes
               </Button>
-              <Button onClick={() => setConfirmWebSearch(false)}>No</Button>
+              <Button onClick={ai.closeWebSearchConfirm}>No</Button>
             </ModalActions>
           </ModalBox>
         </ModalOverlay>

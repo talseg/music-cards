@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import styled from 'styled-components'
 import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
-import { version } from '../package.json'
 import { fetchTrackInfo } from './spotify'
-import type { CardData, AiDate } from './types'
-import { DATES_ENABLED } from './constants'
+import type { CardData, AiDate, AuthState, AiStatus } from './types'
+import { DATES_ENABLED, CARDS_PER_SHEET } from './constants'
 import { trackIdOf } from './helpers'
 import { createAuth, type InitAuthResult } from './auth/spotify-auth'
 import { fetchPlaylistTracks, extractPlaylistId } from './spotify-user'
@@ -12,6 +11,8 @@ import { generatePdf } from './pdfGenerator'
 import { getSuggestedYear } from './perplexityDates'
 import { SongList } from './SongList'
 import { SongCard } from './SongCard'
+import { ControlBar } from './ControlBar'
+import { Button } from './shared.styles'
 
 // Create the auth bundle once at module load. The shared module (src/auth) is
 // app-agnostic; everything app-specific about auth lives in this config.
@@ -24,18 +25,8 @@ const auth_ = createAuth({
 })
 const sdk: SpotifyApi = auth_.sdk
 
-// Auth phase for the (non-blocking) login feature.
-//   'checking' - verifying a stored token / handling the OAuth callback on mount
-//   'out'      - not logged in; regular mode (login optional)
-//   'in'       - logged in and profile confirmed; playlist feature enabled
-type AuthState =
-  | { kind: 'checking' }
-  | { kind: 'out'; error: string | null }
-  | { kind: 'in'; user: string }
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CARDS_PER_SHEET = 4
 const CARD_WIDTH_PX = 159
 const CARD_RADIUS_PX = 8
 
@@ -61,12 +52,6 @@ const TopPanel = styled.div`
   flex-direction: column;
   gap: 12px;
   max-width: 1000px;
-`
-
-const VersionLabel = styled.div`
-  font-size: 0.7rem;
-  color: #aaa;
-  margin-left: auto;
 `
 
 const InputRow = styled.div`
@@ -97,70 +82,13 @@ const Input = styled.input`
   }
 `
 
-const Button = styled.button<{ $primary?: boolean }>`
-  font-size: 0.95rem;
-  padding: 8px 18px;
-  border: 1px solid ${p => p.$primary ? '#2a6' : '#ccc'};
-  border-radius: 4px;
-  background: ${p => p.$primary ? '#2a6' : '#f5f5f5'};
-  color: ${p => p.$primary ? 'white' : '#333'};
-  cursor: pointer;
-  white-space: nowrap;
-  font-weight: ${p => p.$primary ? 600 : 400};
-
-  &:hover {
-    background: ${p => p.$primary ? '#298' : '#e8e8e8'};
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-`
-
 const ErrorText = styled.div`
   color: #cc0000;
   font-size: 0.85rem;
   margin-top: 2px;
 `
 
-// ─── Web-search toggle + confirm modal ───────────────────────────────────────
-
-const ToggleLabel = styled.label`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: #555;
-  white-space: nowrap;
-  cursor: pointer;
-`
-
-const Toggle = styled.button<{ $on: boolean }>`
-  position: relative;
-  width: 42px;
-  height: 22px;
-  flex-shrink: 0;
-  padding: 0;
-  border-radius: 11px;
-  border: 1px solid ${p => (p.$on ? '#2a6' : '#ccc')};
-  background: ${p => (p.$on ? '#2a6' : '#e0e0e0')};
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 1px;
-    left: ${p => (p.$on ? '21px' : '1px')};
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: white;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    transition: left 0.15s;
-  }
-`
+// ─── Confirm modal ───────────────────────────────────────────────────────────
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -194,56 +122,7 @@ const ModalActions = styled.div`
   justify-content: center;
 `
 
-// ─── Auth bar ───────────────────────────────────────────────────────────────
-
-const AuthBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  width: 100%;
-  max-width: 1000px;
-`
-
-const SpotifyButton = styled.button`
-  font-size: 0.9rem;
-  padding: 8px 20px;
-  border: none;
-  border-radius: 20px;
-  background: #1db954;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-
-  &:hover {
-    background: #17a349;
-  }
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
-`
-
-const AuthStatus = styled.span`
-  font-size: 0.85rem;
-  color: #555;
-`
-
-const LogoutLink = styled.button`
-  font-size: 0.8rem;
-  color: #0052cc;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-
-  &:hover {
-    color: #003a99;
-  }
-`
+// ─── Auth error ───────────────────────────────────────────────────────────────
 
 const AuthError = styled.div`
   color: #cc0000;
@@ -260,56 +139,6 @@ const DisabledHint = styled.span`
   gap: 10px;
   flex: 1;
 `
-
-// ─── Bottom Controls ──────────────────────────────────────────────────────────
-
-const SheetCounter = styled.div`
-  font-size: 0.82rem;
-  color: #888;
-  white-space: nowrap;
-  line-height: 1;
-  padding-left: 120px;
-`
-
-
-const SongCounterValue = styled.input`
-  width: 34px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #333;
-  border: none;
-  background: transparent;
-  text-align: center;
-  outline: none;
-  padding: 0;
-
-  &::-webkit-inner-spin-button,
-  &::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-  }
-`
-
-const CounterBtn = styled.button`
-  width: 22px;
-  height: 22px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  background: white;
-  color: #555;
-  font-size: 1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  line-height: 1;
-
-  &:hover {
-    background: #e8e8e8;
-  }
-`
-
-// ─── Add row ──────────────────────────────────────────────────────────────────
 
 // ─── Card Preview ─────────────────────────────────────────────────────────────
 
@@ -442,15 +271,6 @@ function round5(n: number): number {
   return Math.round(n * 1e5) / 1e5
 }
 
-function sheetCount(cardCount: number): string {
-  if (cardCount === 0) return '0'
-  const sheets = cardCount / CARDS_PER_SHEET
-  const nearest = Math.ceil(sheets * 4) / 4
-  if (Number.isInteger(nearest)) return String(nearest)
-  const str = nearest.toFixed(2)
-  return str.replace(/\.?0+$/, '')
-}
-
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 let nextId = 1
@@ -480,8 +300,7 @@ function App() {
   // so pausing only stops it between songs (the in-flight call always finishes and
   // is saved). pauseRef is read inside that loop, where React state wouldn't be
   // visible — a ref always reflects the latest value.
-  const [aiStatus, setAiStatus] =
-    useState<'idle' | 'running' | 'pausing' | 'paused'>('idle')
+  const [aiStatus, setAiStatus] = useState<AiStatus>('idle')
   const pauseRef = useRef(false)
   const [webSearchingId, setWebSearchingId] = useState<string | null>(null)
   // Global gate for the per-song web-search buttons. Starts disabled every load
@@ -496,9 +315,6 @@ function App() {
     const parsed = Number(stored)
     return stored && Number.isFinite(parsed) && parsed >= 0 ? round5(parsed) : 0
   })
-  // Free-text mirror of totalCost while the field is focused, so typing (incl.
-  // intermediate states like "0." ) isn't fought by the numeric state.
-  const [totalCostInput, setTotalCostInput] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const selectedCard = cards.find(c => c.id === selectedId) ?? null
@@ -835,97 +651,25 @@ function App() {
 
   return (
     <AppWrapper className='app_wrapper'>
-      {/* Auth bar: login status + Generate PDF + counter + sheets + version */}
-      <AuthBar>
-        {auth.kind === 'checking' && <AuthStatus>Checking login…</AuthStatus>}
-        {auth.kind === 'out' && (
-          <SpotifyButton onClick={handleLogin}>Log in with Spotify</SpotifyButton>
-        )}
-        {auth.kind === 'in' && (
-          <>
-            <AuthStatus>Logged in as: {auth.user}</AuthStatus>
-            <LogoutLink onClick={handleLogout}>Log out</LogoutLink>
-          </>
-        )}
-        <Button
-          onClick={handleGeneratePdf}
-          disabled={cards.length === 0 || pdfLoading}
-        >
-          {pdfLoading ? 'Generating…' : 'Generate PDF'}
-        </Button>
-        <Button
-          onClick={handleClearSongs}
-          disabled={cards.length === 0}
-          title="Remove all songs from the list"
-        >
-          Clear Songs
-        </Button>
-        <Button
-          onClick={DATES_ENABLED ? handleDatesButton : undefined}
-          // Disabled when idle with nothing to query, and during 'pausing' (the
-          // stop is committed, just finishing the current song). While running
-          // it's the Pause control; while paused it's the Resume control.
-          disabled={!DATES_ENABLED || aiStatus === 'pausing' || (aiStatus === 'idle' && !hasUnqueried)}
-          title={!DATES_ENABLED ? 'AI dates feature is disabled.\nAdd PERPLEXITY_API_KEY and set VITE_DATES_ENABLED=true in .env to enable.' : undefined}
-        >
-          {aiStatus === 'running'
-            ? 'Pause'
-            : aiStatus === 'pausing'
-              ? 'Pausing…'
-              : aiStatus === 'paused'
-                ? 'Resume'
-                : 'Get AI dates'}
-        </Button>
-        {DATES_ENABLED && (
-          <>
-            <ToggleLabel title={webSearchEnabled ? 'Disable web search' : 'Enable web search (≈0.5¢ per query)'}>
-              Web search
-              <Toggle
-                type="button"
-                $on={webSearchEnabled}
-                role="switch"
-                aria-checked={webSearchEnabled}
-                onClick={handleToggleWebSearch}
-              />
-            </ToggleLabel>
-            <AuthStatus>Total $</AuthStatus>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={totalCostInput ?? totalCost.toFixed(5)}
-              onFocus={() => setTotalCostInput(totalCost.toFixed(5))}
-              onChange={e => setTotalCostInput(e.target.value)}
-              onBlur={() => {
-                const parsed = Number(totalCostInput)
-                if (totalCostInput !== null && Number.isFinite(parsed) && parsed >= 0) {
-                  setTotalCost(round5(parsed))
-                }
-                setTotalCostInput(null)
-              }}
-              title="Lifetime AI-query spend (USD). Editable to sync across ports/machines."
-              style={{ width: 78, fontSize: '0.85rem', border: '1px solid #ddd', borderRadius: 4, background: 'white', textAlign: 'right', padding: '4px 6px' }}
-            />
-          </>
-        )}
-        <CounterBtn onClick={() => setSongCounter(p => Math.max(1, p - 1))}>−</CounterBtn>
-        <SongCounterValue
-          type="number"
-          value={songCounter}
-          min={1}
-          onChange={e => {
-            const v = parseInt(e.target.value, 10)
-            if (!isNaN(v) && v >= 1) setSongCounter(v)
-          }}
-          style={{ width: 34, fontWeight: 700, fontSize: '0.95rem', border: '1px solid #ddd', borderRadius: 4, background: '#f0f0f0', textAlign: 'center', padding: '4px 0' }}
-        />
-        <CounterBtn onClick={() => setSongCounter(p => p + 1)}>+</CounterBtn>
-        <SheetCounter style={{ paddingLeft: 0 }}>
-          {cards.length > 0
-            ? `${sheetCount(cards.length)} sheet${parseFloat(sheetCount(cards.length)) !== 1 ? 's' : ''}`
-            : ''}
-        </SheetCounter>
-        <VersionLabel>music-cards v{version}</VersionLabel>
-      </AuthBar>
+      {/* Top control bar: login status + Generate PDF + AI dates + counter + sheets + version */}
+      <ControlBar
+        auth={auth}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+        onGeneratePdf={handleGeneratePdf}
+        pdfLoading={pdfLoading}
+        onClearSongs={handleClearSongs}
+        cardCount={cards.length}
+        aiStatus={aiStatus}
+        hasUnqueried={hasUnqueried}
+        onDatesButton={handleDatesButton}
+        webSearchEnabled={webSearchEnabled}
+        onToggleWebSearch={handleToggleWebSearch}
+        totalCost={totalCost}
+        onCommitTotalCost={n => setTotalCost(round5(n))}
+        songCounter={songCounter}
+        onSongCounterChange={setSongCounter}
+      />
       {auth.kind === 'out' && auth.error && <AuthError>{auth.error}</AuthError>}
 
       <TopPanel>

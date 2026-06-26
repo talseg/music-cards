@@ -18,3 +18,17 @@ export interface AiDate {
   // "Get AI dates" plus each subsequent web search.
   cost: number
 }
+
+// Auth phase for the (non-blocking) login feature.
+//   'checking' - verifying a stored token / handling the OAuth callback on mount
+//   'out'      - not logged in; regular mode (login optional)
+//   'in'       - logged in and profile confirmed; playlist feature enabled
+export type AuthState =
+  | { kind: 'checking' }
+  | { kind: 'out'; error: string | null }
+  | { kind: 'in'; user: string }
+
+// 'running' = a get-dates pass is in flight; 'pausing' = pause requested but the
+// current song's call is still finishing; 'paused' = a pass was interrupted with
+// songs still unqueried; 'idle' = nothing running.
+export type AiStatus = 'idle' | 'running' | 'pausing' | 'paused'

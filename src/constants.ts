@@ -2,3 +2,6 @@
 // The "Get AI dates" feature is fail-closed: hidden unless this is exactly
 // 'true'. Anything else (absent / other value) leaves the feature off.
 export const DATES_ENABLED = import.meta.env.VITE_DATES_ENABLED === 'true'
+
+// Cards laid out per printed sheet (2x2 grid of front/back pairs).
+export const CARDS_PER_SHEET = 4

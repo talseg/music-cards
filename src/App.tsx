@@ -134,8 +134,6 @@ function extractTrackId(input: string): string {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-let nextId = 1
-
 function App() {
   const [urlInput, setUrlInput] = useState('')
   const [playlistInput, setPlaylistInput] = useState('')
@@ -151,6 +149,7 @@ function App() {
   })
   const [pdfLoading, setPdfLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const nextId = useRef(1)
 
   const { auth, loggedIn, login, logout } = useAuth()
   const ai = useAiDates(cards, () => setError(null))
@@ -178,7 +177,7 @@ function App() {
         if (existing.has(t.trackId)) continue
         existing.add(t.trackId)
         newCards.push({
-          id: nextId++,
+          id: nextId.current++,
           spotifyUri: `spotify:track:${t.trackId}`,
           spotifyYear: t.trackInfo.year,
           trackInfo: t.trackInfo,
@@ -218,7 +217,7 @@ function App() {
 
     try {
       const trackInfo = await fetchTrackInfo(trackId)
-      const id = nextId++
+      const id = nextId.current++
       const newCard: CardData = { id, spotifyUri: `spotify:track:${trackId}`, spotifyYear: trackInfo.year, trackInfo }
       setCards(prev => [...prev, newCard])
       setSelectedId(id)

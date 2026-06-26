@@ -5,7 +5,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 
-> Turn any Spotify playlist — or your Liked Songs — into a printable deck of cards for a music **guessing game**.
+> Turn any Spotify track, album, or playlist into a printable deck of cards for a music **guessing game**.
 
 ---
 
@@ -37,7 +37,7 @@ Once your deck is printed, there are two ways to play:
 
 ## 🎮 Features
 
-- 🎧 Import songs from a **Spotify playlist** or your **Liked Songs**.
+- 🎧 Add a single **track**, a whole **album**, or a **playlist** — just paste a Spotify link.
 - 🖨️ Export a **print-ready PDF** of double-sided cards (QR + song details).
 - 📅 Optional **AI release-year lookup** so you don't have to research dates by hand.
 - ⏯️ **Pause / resume** the AI lookup at any time.
@@ -171,7 +171,7 @@ If `VITE_DATES_ENABLED` is absent or not exactly `true`, the entire AI feature s
 
 - **Edit cards inline** — Click the **title**, **artist**, or **year** directly on the preview card to edit it. Changes save as soon as you click away.
 
-- **Export playlist needs login** — The **Export playlist** field (load every song from a Spotify playlist or your Liked Songs) only works when you're signed in to Spotify. The **Add song** field works without logging in, for adding tracks one at a time.
+- **Add / Import** — Paste any Spotify **track**, **album**, or **playlist** link and the type is detected automatically. Tracks and albums work without logging in; importing a **playlist** requires being signed in to Spotify.
 
 - **Pick which year prints (AI mode)** — Each song row shows two suggested years side by side: the **Spotify** year and the **AI** year. Click either value to set it as the year printed on the card (shown in the **Card** column).
 

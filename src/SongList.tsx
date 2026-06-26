@@ -69,7 +69,7 @@ const ListItemArtist = styled.span`
   font-size: 0.8rem;
   color: #777;
   flex-shrink: 0;
-  max-width: 160px;
+  max-width: 360px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

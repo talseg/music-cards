@@ -153,7 +153,7 @@ function App() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleImport() }}
-              placeholder="Paste a Spotify track or playlist link…"
+              placeholder="Paste a Spotify track, album, or playlist link…"
               disabled={importing}
             />
             <Button $primary onClick={handleImport} disabled={importDisabled}>

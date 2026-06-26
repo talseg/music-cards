@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { fetchTrackInfo } from '../spotify/spotify'
+import { fetchTrackInfo, fetchAlbumTracks } from '../spotify/spotify'
+import type { ImportedTrack } from '../spotify/spotify'
 import type { CardData } from '../common/types'
 import { generatePdf } from '../pdfGenerator'
 import { sdk } from '../auth/useAuth'
 import { fetchPlaylistTracks } from '../spotify/spotify-user'
-import type { PlaylistTrack } from '../spotify/spotify-user'
 import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
 
 // App-data localStorage key. Deliberately lives OUTSIDE the 'music-cards:' auth
@@ -51,14 +51,12 @@ export function useSongs(loggedIn: boolean) {
   // are recognized but not yet implemented.
   const handleImport = async () => {
     if (!link) {
-      setError('Unrecognized Spotify link. Paste a track or playlist URL.')
+      setError('Unrecognized Spotify link. Paste a track, album, or playlist URL.')
       return
     }
     if (LINK_NEEDS_LOGIN[link.kind] && !loggedIn) return
-    if (link.kind === 'album' || link.kind === 'liked') {
-      setError(link.kind === 'album'
-        ? 'Album import is coming soon.'
-        : 'Liked songs import is coming soon.')
+    if (link.kind === 'liked') {
+      setError('Liked songs import is coming soon.')
       return
     }
 
@@ -66,10 +64,12 @@ export function useSongs(loggedIn: boolean) {
     setError(null)
 
     try {
-      let tracks: PlaylistTrack[]
+      let tracks: ImportedTrack[]
       if (link.kind === 'track') {
         const trackInfo = await fetchTrackInfo(link.id!)
         tracks = [{ trackId: link.id!, trackInfo }]
+      } else if (link.kind === 'album') {
+        tracks = await fetchAlbumTracks(link.id!)
       } else {
         tracks = await fetchPlaylistTracks(sdk, link.id!)
       }

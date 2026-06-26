@@ -8,12 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
-import type { TrackInfo } from './spotify'
-
-export interface PlaylistTrack {
-  trackId: string
-  trackInfo: TrackInfo
-}
+import type { ImportedTrack } from './spotify'
 
 // Fetch all tracks from a playlist, following pagination. Requires a logged-in
 // SDK instance — but calls the endpoint directly rather than via the SDK: the
@@ -23,12 +18,12 @@ export interface PlaylistTrack {
 export async function fetchPlaylistTracks(
   sdk: SpotifyApi,
   playlistId: string,
-): Promise<PlaylistTrack[]> {
+): Promise<ImportedTrack[]> {
   const tokenObj = await sdk.getAccessToken()
   const token = tokenObj?.access_token
   if (!token) throw new Error('Not logged in')
 
-  const results: PlaylistTrack[] = []
+  const results: ImportedTrack[] = []
   const limit = 100
   let offset = 0
 

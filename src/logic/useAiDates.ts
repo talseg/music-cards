@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import type { CardData, AiDate, AiStatus } from './types'
-import { DATES_ENABLED } from './constants'
-import { trackIdOf } from './helpers'
+import type { CardData, AiDate, AiStatus } from '../common/types'
+import { DATES_ENABLED } from '../common/constants'
+import { trackIdOf } from '../common/helpers'
 import { getSuggestedYear } from './perplexityDates'
 
 // App-data localStorage key. Deliberately lives OUTSIDE the 'music-cards:' auth

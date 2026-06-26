@@ -1,6 +1,6 @@
 import styled from 'styled-components'
 import { QRCodeSVG } from 'qrcode.react'
-import type { CardData } from './types'
+import type { CardData } from '../common/types'
 
 // Card dimensions (match the values used in App.tsx and pdfGenerator.ts).
 const CARD_WIDTH_PX = 159

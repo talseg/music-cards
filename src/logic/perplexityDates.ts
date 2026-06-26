@@ -9,7 +9,7 @@
 // from its training knowledge — far cheaper than search-grounded queries, and
 // year-level accuracy is all the game needs.
 
-import promptTemplate from './perplexityPrompt.txt?raw'
+import promptTemplate from '../assets/perplexityPrompt.txt?raw'
 
 // Cheapest Google model in the Agent API table, and the non-preview (stable)
 // variant Google recommends migrating to. Kept as a single constant so swapping

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
-import type { AuthState } from './types'
-import { createAuth, type InitAuthResult } from './auth/spotify-auth'
+import type { AuthState } from '../common/types'
+import { createAuth, type InitAuthResult } from './spotify-auth'
 
 // Create the auth bundle once at module load. The shared module (src/auth) is
 // app-agnostic; everything app-specific about auth lives in this config.

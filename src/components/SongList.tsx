@@ -1,8 +1,8 @@
 import { useRef, useEffect } from 'react'
 import styled from 'styled-components'
-import { DATES_ENABLED } from './constants'
-import { trackIdOf } from './helpers'
-import type { CardData, AiDate } from './types'
+import { DATES_ENABLED } from '../common/constants'
+import { trackIdOf } from '../common/helpers'
+import type { CardData, AiDate } from '../common/types'
 
 // ─── Song List ────────────────────────────────────────────────────────────────
 

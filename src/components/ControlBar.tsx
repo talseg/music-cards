@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import styled from 'styled-components'
-import { version } from '../package.json'
-import { DATES_ENABLED } from './constants'
-import { sheetCount } from './helpers'
-import type { AuthState, AiStatus } from './types'
-import { Button } from './shared.styles'
+import { version } from '../../package.json'
+import { DATES_ENABLED } from '../common/constants'
+import { sheetCount } from '../common/helpers'
+import type { AuthState, AiStatus } from '../common/types'
+import { Button } from '../common/shared.styles'
 
 // ─── Control bar styled-components ──────────────────────────────────────────────
 

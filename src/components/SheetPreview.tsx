@@ -1,12 +1,7 @@
 import styled from 'styled-components'
 import type { CardData } from '../common/types'
 import { CARDS_PER_SHEET } from '../common/constants'
-import { SongCard } from './SongCard'
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CARD_WIDTH_PX = 159
-const CARD_RADIUS_PX = 8
+import { CARD_RADIUS_PX, CARD_WIDTH_PX, SongCard } from './SongCard'
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ import { fetchPlaylistTracks, extractPlaylistId } from './spotify-user'
 import { generatePdf } from './pdfGenerator'
 import { getSuggestedYear } from './perplexityDates'
 import { SongList } from './SongList'
-import { SongCard, CardPlaceholder } from './SongCard'
+import { SongCard } from './SongCard'
 
 // Create the auth bundle once at module load. The shared module (src/auth) is
 // app-agnostic; everything app-specific about auth lives in this config.
@@ -36,6 +36,7 @@ type AuthState =
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CARDS_PER_SHEET = 4
+const CARD_WIDTH_PX = 159
 const CARD_RADIUS_PX = 8
 
 // App-data localStorage keys. These deliberately live OUTSIDE the 'music-cards:'
@@ -374,6 +375,16 @@ const CardPairWrapper = styled.div<{ $selected: boolean; $clickable?: boolean }>
   @media print {
     outline: none;
   }
+`
+
+// Empty slot that pads a partial sheet in the preview. A single dashed rectangle
+// (no height set) that stretches to the row's height via CardGrid's flex layout,
+// so it spans a full card pair with rounded outer corners and no middle seam.
+const SheetSlotPlaceholder = styled.div`
+  width: ${CARD_WIDTH_PX}px;
+  border: 1px dashed #ccc;
+  border-radius: ${CARD_RADIUS_PX}px;
+  background: #fafafa;
 `
 
 // Hidden container: renders all cards off-screen for PDF capture
@@ -783,23 +794,6 @@ function App() {
     }
   }
 
-  // ─── Card renderers ──────────────────────────────────────────────────────
-
-  const renderCardPair = (card: CardData, selected: boolean) => (
-    <CardPairWrapper
-      key={`pair-${card.id}`}
-      $selected={selected}
-      $clickable
-      onClick={() => setSelectedId(card.id)}
-    >
-      <SongCard
-        editable
-        card={card}
-        onFieldChange={(field, value) => updateCardField(card.id, field, value)}
-      />
-    </CardPairWrapper>
-  )
-
   // ─── Preview ─────────────────────────────────────────────────────────────
 
   const renderPreview = () => {
@@ -809,13 +803,21 @@ function App() {
       <CardGrid>
         {sheetCards.map((card, i) =>
           card
-            ? renderCardPair(card, card.id === selectedId)
-            : (
-              <CardPairWrapper key={`ph-${i}`} $selected={false}>
-                <CardPlaceholder />
-                <CardPlaceholder />
+            ? (
+              <CardPairWrapper
+                key={`pair-${card.id}`}
+                $selected={card.id === selectedId}
+                $clickable
+                onClick={() => setSelectedId(card.id)}
+              >
+                <SongCard
+                  editable
+                  card={card}
+                  onFieldChange={(field, value) => updateCardField(card.id, field, value)}
+                />
               </CardPairWrapper>
             )
+            : <SheetSlotPlaceholder key={`ph-${i}`} />
         )}
       </CardGrid>
     )

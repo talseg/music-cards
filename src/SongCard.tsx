@@ -22,11 +22,6 @@ const Card = styled.div`
   overflow: hidden;
 `
 
-const PlaceholderCard = styled(Card)`
-  border: 1px dashed #ccc;
-  background: #fafafa;
-`
-
 const CardNote = styled.div`
   font-size: 2.0rem;
   color: #3fdf0a;
@@ -139,12 +134,4 @@ export function SongCard({ card, editable, onFieldChange }: SongCardProps) {
       </Card>
     </>
   )
-}
-
-// ─── CardPlaceholder ────────────────────────────────────────────────────────────
-
-// Empty card-shaped slot used to pad a partial sheet in the preview. Wrapped as a
-// component (not a bare styled export) so this file only exports components.
-export function CardPlaceholder() {
-  return <PlaceholderCard />
 }

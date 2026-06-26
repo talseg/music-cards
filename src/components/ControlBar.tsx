@@ -3,7 +3,7 @@ import styled from 'styled-components'
 import { version } from '../../package.json'
 import { DATES_ENABLED } from '../common/constants'
 import { sheetCount } from '../common/helpers'
-import type { AuthState, AiStatus } from '../common/types'
+import type { AuthState, AiState } from '../common/types'
 import { Button } from '../common/shared.styles'
 
 // ─── Control bar styled-components ──────────────────────────────────────────────
@@ -154,13 +154,7 @@ interface ControlBarProps {
   pdfLoading: boolean
   onClearSongs: () => void
   cardCount: number
-  aiStatus: AiStatus
-  hasUnqueried: boolean
-  onDatesButton: () => void
-  webSearchEnabled: boolean
-  onToggleWebSearch: () => void
-  totalCost: number
-  onCommitTotalCost: (value: number) => void
+  ai: AiState
   songCounter: number
   onSongCounterChange: (value: number) => void
 }
@@ -175,16 +169,19 @@ export function ControlBar({
   pdfLoading,
   onClearSongs,
   cardCount,
-  aiStatus,
-  hasUnqueried,
-  onDatesButton,
-  webSearchEnabled,
-  onToggleWebSearch,
-  totalCost,
-  onCommitTotalCost,
+  ai,
   songCounter,
   onSongCounterChange,
 }: ControlBarProps) {
+  const {
+    aiStatus,
+    hasUnqueried,
+    onDatesButton,
+    webSearchEnabled,
+    onToggleWebSearch,
+    totalCost,
+    onCommitTotalCost,
+  } = ai
   // Free-text mirror of totalCost while the field is focused, so typing (incl.
   // intermediate states like "0.") isn't fought by the numeric value.
   const [totalCostInput, setTotalCostInput] = useState<string | null>(null)

@@ -32,3 +32,24 @@ export type AuthState =
 // current song's call is still finishing; 'paused' = a pass was interrupted with
 // songs still unqueried; 'idle' = nothing running.
 export type AiStatus = 'idle' | 'running' | 'pausing' | 'paused'
+
+// The full return value of useAiDates. One shared interface for all consumers
+// (ControlBar, SongList, WebSearchConfirmModal); each picks the fields it needs.
+export interface AiState {
+  // ControlBar wiring
+  aiStatus: AiStatus
+  hasUnqueried: boolean
+  onDatesButton: () => void
+  webSearchEnabled: boolean
+  onToggleWebSearch: () => void
+  totalCost: number
+  onCommitTotalCost: (value: number) => void
+  // SongList wiring
+  aiDates: Map<string, AiDate>
+  webSearchingId: string | null
+  onWebSearch: (card: CardData) => void
+  // Confirm modal
+  confirmWebSearch: boolean
+  confirmWebSearchYes: () => void
+  closeWebSearchConfirm: () => void
+}

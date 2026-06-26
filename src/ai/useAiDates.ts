@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import type { CardData, AiDate, AiStatus } from '../common/types'
+import type { CardData, AiDate, AiStatus, AiState } from '../common/types'
 import { DATES_ENABLED } from '../common/constants'
 import { trackIdOf } from '../common/helpers'
 import { getSuggestedYear } from './perplexityDates'
@@ -20,7 +20,7 @@ function round5(n: number): number {
 // Owns the AI release-year feature: per-song results, the run/pause state
 // machine, the per-song web search, the web-search cost gate (+ its confirm
 // modal flag), and the persisted lifetime spend total.
-export function useAiDates(cards: CardData[], clearError: () => void) {
+export function useAiDates(cards: CardData[], clearError: () => void): AiState {
   // AI release-year results, keyed by Spotify track id. Presence of an entry =
   // "already queried" (so the same song isn't queried twice). Entries persist
   // when songs are removed, so re-adding a song restores its previous result.

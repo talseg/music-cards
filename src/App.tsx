@@ -1,6 +1,7 @@
 import { SongList } from './components/SongList'
 import { SheetPreview } from './components/SheetPreview'
 import { ControlBar } from './components/ControlBar'
+import { WebSearchConfirmModal } from './components/WebSearchConfirmModal'
 import { Button } from './common/shared.styles'
 import { useAuth, getRedirectUri } from './auth/useAuth'
 import { useAiDates } from './ai/useAiDates'
@@ -56,40 +57,6 @@ const ErrorText = styled.div`
   color: #cc0000;
   font-size: 0.85rem;
   margin-top: 2px;
-`
-
-// ─── Confirm modal ───────────────────────────────────────────────────────────
-
-const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`
-
-const ModalBox = styled.div`
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  max-width: 360px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  text-align: center;
-`
-
-const ModalText = styled.p`
-  font-size: 0.95rem;
-  color: #333;
-  margin: 0 0 20px;
-  line-height: 1.45;
-`
-
-const ModalActions = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: center;
 `
 
 // ─── Auth error ───────────────────────────────────────────────────────────────
@@ -150,13 +117,7 @@ function App() {
         pdfLoading={pdfLoading}
         onClearSongs={handleClearSongs}
         cardCount={cards.length}
-        aiStatus={ai.aiStatus}
-        hasUnqueried={ai.hasUnqueried}
-        onDatesButton={ai.onDatesButton}
-        webSearchEnabled={ai.webSearchEnabled}
-        onToggleWebSearch={ai.onToggleWebSearch}
-        totalCost={ai.totalCost}
-        onCommitTotalCost={ai.onCommitTotalCost}
+        ai={ai}
         songCounter={songCounter}
         onSongCounterChange={setSongCounter}
       />
@@ -230,12 +191,9 @@ function App() {
         <SongList
           cards={cards}
           selectedId={selectedId}
-          aiDates={ai.aiDates}
-          webSearchEnabled={ai.webSearchEnabled}
-          webSearchingId={ai.webSearchingId}
+          ai={ai}
           onSelect={setSelectedId}
           onApplyYear={(id, year) => updateCardField(id, 'year', year)}
-          onWebSearch={ai.onWebSearch}
           onDelete={handleDelete}
         />
       </TopPanel>
@@ -247,22 +205,7 @@ function App() {
         onFieldChange={updateCardField}
       />
 
-      {ai.confirmWebSearch && (
-        <ModalOverlay onClick={ai.closeWebSearchConfirm}>
-          <ModalBox onClick={e => e.stopPropagation()}>
-            <ModalText>
-              Web search can be expensive (0.5 cent per query). Are you sure you
-              want to enable it?
-            </ModalText>
-            <ModalActions>
-              <Button $primary onClick={ai.confirmWebSearchYes}>
-                Yes
-              </Button>
-              <Button onClick={ai.closeWebSearchConfirm}>No</Button>
-            </ModalActions>
-          </ModalBox>
-        </ModalOverlay>
-      )}
+      <WebSearchConfirmModal ai={ai} />
     </AppWrapper>
   )
 }

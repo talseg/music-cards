@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react'
 import styled from 'styled-components'
 import { DATES_ENABLED } from '../common/constants'
 import { trackIdOf } from '../common/helpers'
-import type { CardData, AiDate } from '../common/types'
+import type { CardData, AiState } from '../common/types'
 
 // ─── Song List ────────────────────────────────────────────────────────────────
 
@@ -213,26 +213,21 @@ const DeleteBtn = styled.button`
 interface SongListProps {
   cards: CardData[]
   selectedId: number | null
-  aiDates: Map<string, AiDate>
-  webSearchEnabled: boolean
-  webSearchingId: string | null
+  ai: AiState
   onSelect: (id: number) => void
   onApplyYear: (id: number, year: string) => void
-  onWebSearch: (card: CardData) => void
   onDelete: (id: number) => void
 }
 
 export function SongList({
   cards,
   selectedId,
-  aiDates,
-  webSearchEnabled,
-  webSearchingId,
+  ai,
   onSelect,
   onApplyYear,
-  onWebSearch,
   onDelete,
 }: SongListProps) {
+  const { aiDates, webSearchEnabled, webSearchingId, onWebSearch } = ai
   // Maps each card id to its <ListItem> DOM node, so we can scroll the
   // selected song into view in the list whenever the selection changes.
   const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map())

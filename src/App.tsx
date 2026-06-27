@@ -86,6 +86,7 @@ function App() {
         onFieldChange={updateCardField}
       />
 
+      {/* Hidden onfirmation dialog */}
       <WebSearchConfirmModal ai={ai} />
     </AppWrapper>
   )

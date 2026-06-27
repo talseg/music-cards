@@ -175,3 +175,5 @@ export function useSongs(loggedIn: boolean) {
     handleClearSongs,
   }
 }
+
+export type SongsInterface = ReturnType<typeof useSongs>

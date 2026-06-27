@@ -4,6 +4,7 @@ import { version } from '../../package.json'
 import { DATES_ENABLED } from '../common/constants'
 import { sheetCount } from '../common/helpers'
 import type { AuthState, AiState } from '../common/types'
+import type { SongsInterface } from '../songs/useSongs'
 import { Button } from '../common/shared.styles'
 
 // ─── Control bar styled-components ──────────────────────────────────────────────
@@ -150,13 +151,8 @@ interface ControlBarProps {
   auth: AuthState
   onLogin: () => void
   onLogout: () => void
-  onGeneratePdf: () => void
-  pdfLoading: boolean
-  onClearSongs: () => void
-  cardCount: number
+  songs: SongsInterface
   ai: AiState
-  songCounter: number
-  onSongCounterChange: (value: number) => void
 }
 
 // The app's top control bar: auth status/login + Generate PDF + Clear + AI dates +
@@ -165,14 +161,18 @@ export function ControlBar({
   auth,
   onLogin,
   onLogout,
-  onGeneratePdf,
-  pdfLoading,
-  onClearSongs,
-  cardCount,
+  songs,
   ai,
-  songCounter,
-  onSongCounterChange,
 }: ControlBarProps) {
+  const {
+    cards,
+    songCounter,
+    setSongCounter: onSongCounterChange,
+    pdfLoading,
+    handleGeneratePdf: onGeneratePdf,
+    handleClearSongs: onClearSongs,
+  } = songs
+  const cardCount = cards.length
   const {
     aiStatus,
     hasUnqueried,

@@ -81,27 +81,23 @@ const DisabledHint = styled.span`
 
 function App() {
   const { auth, loggedIn, login, logout } = useAuth()
+  const songsInterface = useSongs(loggedIn)
   const {
     cards,
     selectedId,
     setSelectedId,
-    songCounter,
-    setSongCounter,
     input,
     setInput,
     importing,
     importDisabled,
     importDisabledReason,
-    pdfLoading,
     error,
     clearError,
     inputRef,
     handleImport,
     handleDelete,
     updateCardField,
-    handleGeneratePdf,
-    handleClearSongs,
-  } = useSongs(loggedIn)
+  } = songsInterface
   const ai = useAiDates(cards, clearError)
 
   return (
@@ -111,13 +107,8 @@ function App() {
         auth={auth}
         onLogin={login}
         onLogout={logout}
-        onGeneratePdf={handleGeneratePdf}
-        pdfLoading={pdfLoading}
-        onClearSongs={handleClearSongs}
-        cardCount={cards.length}
+        songs={songsInterface}
         ai={ai}
-        songCounter={songCounter}
-        onSongCounterChange={setSongCounter}
       />
       {auth.kind === 'out' && auth.error && <AuthError>{auth.error}</AuthError>}
 

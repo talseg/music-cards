@@ -45,7 +45,7 @@ export function WebSearchConfirmModal({ ai }: { ai?: AiState }) {
     <ModalOverlay onClick={ai.closeWebSearchConfirm}>
       <ModalBox onClick={e => e.stopPropagation()}>
         <ModalText>
-          Web search can be expensive (0.5 cent per query). Are you sure you
+          Web search is expensive (0.5 cent per query). Are you sure you
           want to enable it?
         </ModalText>
         <ModalActions>

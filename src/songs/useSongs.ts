@@ -16,23 +16,24 @@ const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
 
 // The song domain exposed to the app. The return shape of useSongs.
 //
-// Selection has three independent parts (see the state in useSongs for the why):
+// Selection model (no hidden state — everything below is visible):
 //   selectedIds  - the multi-selection set (green / operated-on); may be empty.
-//   previewId    - the single song the preview pages to; moves only on a plain
-//                  row/preview-card click, never from checkboxes; survives an
-//                  empty selection so "unselect all" leaves the preview put.
-//   (pivot)      - the shift-range anchor; internal (a ref), not exposed.
+//   previewId    - the single "current song": what the preview pages to and the
+//                  blue list marker. Moves on any row / preview-card / checkbox
+//                  click; survives an empty selection (unselect-all leaves it put).
+//   shift anchor - NOT stored: it's the topmost selected song, derived from the set.
 export interface SongsInterface {
   cards: CardData[]
   selectedIds: Set<number>
   previewId: number | null
   // Plain row / preview-card click: collapse to a single-selection of `id`.
   selectSingle: (id: number) => void
-  // Checkbox click: toggle `id` in/out of the selection (and set the pivot).
+  // Checkbox click: toggle `id` in/out of the selection; makes it the current song.
   toggleSelect: (id: number) => void
-  // Shift-click a checkbox: select the range pivot…id (the pivot stays put).
+  // Shift-click a checkbox: ADD the block from the topmost selected song to `id`
+  // (just `id` when nothing is selected). Only ever grows the selection.
   selectRange: (id: number) => void
-  // Header checkbox: select all when not all selected, else clear to empty.
+  // Header checkbox: anything selected ⇒ clear; only an empty selection selects all.
   toggleSelectAll: () => void
   // Sheet arrows: move the preview without touching the selection.
   navigatePreview: (id: number) => void
@@ -63,12 +64,9 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
   const [cards, setCards] = useState<CardData[]>([])
   // Multi-selection (green / operated-on); may be empty.
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  // The song the preview pages to. Decoupled from selectedIds so it survives an
-  // empty selection and isn't yanked around by checkbox toggles.
+  // The "current song": what the preview pages to. Decoupled from selectedIds so
+  // it survives an empty selection; moves on any row / preview / checkbox click.
   const [previewId, setPreviewId] = useState<number | null>(null)
-  // Shift-range anchor. A ref (not state): nothing renders from it, and the
-  // selection handlers need to read the latest value synchronously.
-  const pivotRef = useRef<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [songCounter, setSongCounter] = useState(() => {
     const stored = localStorage.getItem(SONG_COUNTER_KEY)
@@ -154,15 +152,14 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
   }
 
   // Plain row / preview-card click: collapse to a single-selection of `id`,
-  // which also becomes the preview focus and the shift-range pivot.
+  // which also becomes the current song (preview focus).
   const selectSingle = (id: number) => {
     setSelectedIds(new Set([id]))
     setPreviewId(id)
-    pivotRef.current = id
   }
 
-  // Checkbox click: toggle `id` and set the pivot. The preview is left alone so
-  // building a selection never yanks it around.
+  // Checkbox click: toggle `id` in/out of the selection, and make it the current
+  // song so the preview follows what you just touched (no invisible stuck focus).
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -170,33 +167,28 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
       else next.add(id)
       return next
     })
-    pivotRef.current = id
+    setPreviewId(id)
   }
 
-  // Shift-click a checkbox: replace the selection with the inclusive range from
-  // the pivot to `id` (list order). The pivot stays put, so further shift-clicks
-  // re-range from the same anchor. No pivot yet ⇒ behaves like a single toggle.
+  // Shift-click a checkbox: only ever ADDS. With nothing selected it just selects
+  // `id`. Otherwise it unions a contiguous block from the topmost selected song
+  // (the first selected card in list order — the derived anchor) through `id`.
   const selectRange = (id: number) => {
-    const pivot = pivotRef.current
-    if (pivot === null) {
-      setSelectedIds(new Set([id]))
-      pivotRef.current = id
-      return
-    }
-    const i1 = cards.findIndex(c => c.id === pivot)
-    const i2 = cards.findIndex(c => c.id === id)
-    if (i1 === -1 || i2 === -1) return
-    const [lo, hi] = i1 <= i2 ? [i1, i2] : [i2, i1]
-    setSelectedIds(new Set(cards.slice(lo, hi + 1).map(c => c.id)))
+    setSelectedIds(prev => {
+      if (prev.size === 0) return new Set([id])
+      const topIdx = cards.findIndex(c => prev.has(c.id))
+      const clickIdx = cards.findIndex(c => c.id === id)
+      if (topIdx === -1 || clickIdx === -1) return prev
+      const span = cards.slice(Math.min(topIdx, clickIdx), Math.max(topIdx, clickIdx) + 1)
+      return new Set([...prev, ...span.map(c => c.id)])
+    })
+    setPreviewId(id)
   }
 
-  // Header checkbox: select everything, or — when everything is already
-  // selected — clear to an empty selection (the preview stays where it is).
+  // Header checkbox: anything selected ⇒ clear (unselect); only an empty selection
+  // selects all. The current song / preview is left where it is.
   const toggleSelectAll = () => {
-    setSelectedIds(prev =>
-      cards.length > 0 && prev.size === cards.length
-        ? new Set()
-        : new Set(cards.map(c => c.id)))
+    setSelectedIds(prev => prev.size > 0 ? new Set() : new Set(cards.map(c => c.id)))
   }
 
   // Sheet arrows: move the preview focus only; the selection is untouched.
@@ -222,11 +214,9 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
       // fallback song so there's somewhere to continue from.
       setSelectedIds(neighbor !== null ? new Set([neighbor]) : new Set())
       setPreviewId(neighbor)
-      pivotRef.current = neighbor
-    } else {
-      // Only fix up preview/pivot if they pointed at the removed song.
-      if (previewId === id) setPreviewId(neighbor)
-      if (pivotRef.current === id) pivotRef.current = neighbor
+    } else if (previewId === id) {
+      // Deleted a non-selected row; only move the current song if it was that row.
+      setPreviewId(neighbor)
     }
   }
 

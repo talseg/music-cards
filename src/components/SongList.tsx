@@ -294,9 +294,9 @@ export function SongList({
               <RowCheckbox
                 type="checkbox"
                 checked={selectedIds.has(card.id)}
-                // Shift toggles a range from the pivot; a plain click toggles
-                // just this row. stopPropagation keeps the row's single-select
-                // from firing. onChange is a no-op (the click handler owns it).
+                // Shift adds a range up to this row; a plain click toggles just
+                // this row. stopPropagation keeps the row's single-select from
+                // firing. onChange is a no-op (the click handler owns it).
                 onClick={e => {
                   e.stopPropagation()
                   if (e.shiftKey) onRange(card.id)

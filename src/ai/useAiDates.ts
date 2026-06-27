@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import type { CardData, AiDate, AiStatus, AiState } from '../common/types'
+import type { CardData, AiDate, AiStatus } from '../common/types'
 import { DATES_ENABLED } from '../common/constants'
 import { trackIdOf } from '../common/helpers'
 import { getSuggestedYear } from './perplexityDates'
@@ -15,6 +15,27 @@ const TOTAL_COST_KEY = 'music-cards-app:aiDatesTotalCost'
 // build up in the stored per-song or lifetime totals.
 function round5(n: number): number {
   return Math.round(n * 1e5) / 1e5
+}
+
+// The full return value of useAiDates. One shared interface for all consumers
+// (ControlBar, SongList, WebSearchConfirmModal); each picks the fields it needs.
+export interface AiState {
+  // ControlBar wiring
+  aiStatus: AiStatus
+  hasUnqueried: boolean
+  onDatesButton: () => void
+  webSearchEnabled: boolean
+  onToggleWebSearch: () => void
+  totalCost: number
+  onCommitTotalCost: (value: number) => void
+  // SongList wiring
+  aiDates: Map<string, AiDate>
+  webSearchingId: string | null
+  onWebSearch: (card: CardData) => void
+  // Confirm modal
+  confirmWebSearch: boolean
+  confirmWebSearchYes: () => void
+  closeWebSearchConfirm: () => void
 }
 
 // Owns the AI release-year feature: per-song results, the run/pause state

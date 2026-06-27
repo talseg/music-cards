@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import type { Dispatch, SetStateAction, RefObject } from 'react'
 import { fetchTrackInfo, fetchAlbumTracks } from '../spotify/spotify'
 import type { ImportedTrack } from '../spotify/spotify'
 import type { CardData } from '../common/types'
@@ -13,11 +14,34 @@ import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
 // this too.
 const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
 
+// The song domain exposed to the app. The return shape of useSongs.
+export interface SongsInterface {
+  cards: CardData[]
+  selectedId: number | null
+  setSelectedId: Dispatch<SetStateAction<number | null>>
+  songCounter: number
+  setSongCounter: Dispatch<SetStateAction<number>>
+  input: string
+  setInput: Dispatch<SetStateAction<string>>
+  importing: boolean
+  importDisabled: boolean
+  importDisabledReason: string
+  pdfLoading: boolean
+  error: string | null
+  clearError: () => void
+  inputRef: RefObject<HTMLInputElement | null>
+  handleImport: () => Promise<void>
+  handleDelete: (id: number) => void
+  updateCardField: (id: number, field: 'name' | 'artist' | 'year', value: string) => void
+  handleGeneratePdf: () => Promise<void>
+  handleClearSongs: () => void
+}
+
 // Owns the song domain: the card list, selection, the persisted song counter,
 // and every operation that mutates them (add / import / delete / edit / clear /
 // PDF export). Mirrors useAuth / useAiDates — App just consumes what it returns.
 // `loggedIn` comes from useAuth and gates the playlist-import feature.
-export function useSongs(loggedIn: boolean) {
+export function useSongs(loggedIn: boolean) : SongsInterface {
   const [input, setInput] = useState('')
   const [importing, setImporting] = useState(false)
   const [cards, setCards] = useState<CardData[]>([])
@@ -175,5 +199,3 @@ export function useSongs(loggedIn: boolean) {
     handleClearSongs,
   }
 }
-
-export type SongsInterface = ReturnType<typeof useSongs>

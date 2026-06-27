@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import type { AiState } from '../common/types'
+import type { AiState } from '../ai/useAiDates'
 import { Button } from '../common/shared.styles'
 
 // ─── Confirm modal ───────────────────────────────────────────────────────────

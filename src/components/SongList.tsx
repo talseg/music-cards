@@ -2,7 +2,8 @@ import { useRef, useEffect } from 'react'
 import styled from 'styled-components'
 import { DATES_ENABLED } from '../common/constants'
 import { trackIdOf } from '../common/helpers'
-import type { CardData, AiState } from '../common/types'
+import type { CardData } from '../common/types'
+import type { AiState } from '../ai/useAiDates'
 
 // ─── Song List ────────────────────────────────────────────────────────────────
 

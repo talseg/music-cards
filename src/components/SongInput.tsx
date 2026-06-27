@@ -14,7 +14,6 @@ const FieldLabel = styled.label`
   font-size: 0.85rem;
   color: #555;
   white-space: nowrap;
-  width: 110px;
   flex-shrink: 0;
 `
 
@@ -65,7 +64,7 @@ export function SongInput({ songs }: { songs: SongsInterface }) {
     <>
       {/* Combined import row: type inferred from the pasted link */}
       <InputRow>
-        <FieldLabel htmlFor="spotify-link">Add / Import</FieldLabel>
+        <FieldLabel htmlFor="spotify-link">Import</FieldLabel>
         <DisabledHint title={importDisabledReason}>
           <Input
             id="spotify-link"

@@ -12,8 +12,8 @@ const ListPanel = styled.div`
   overflow: hidden;
 `
 
-const DISPLAY_LONG_LIST = true;
-const LIST_HEIGHT = DISPLAY_LONG_LIST ? 650 : 192;
+const DISPLAY_LONG_LIST = false;
+const LIST_HEIGHT = DISPLAY_LONG_LIST ? 650 : 238;
 
 const ListScroll = styled.div`
   max-height: ${LIST_HEIGHT}px;

@@ -37,8 +37,9 @@ Once your deck is printed, there are two ways to play:
 
 ## 🎮 Features
 
-- 🎧 Add a single **track**, a whole **album**, or a **playlist** — just paste a Spotify link.
+- 🎧 Add a single **track**, a whole **album**, a **playlist**, or your entire **Liked Songs** — just paste a Spotify link.
 - 🖨️ Export a **print-ready PDF** of double-sided cards (QR + song details).
+- ✅ **Multiselect** rows (checkbox, shift-click range, select-all) to act on a batch at once.
 - 📅 Optional **AI release-year lookup** so you don't have to research dates by hand.
 - ⏯️ **Pause / resume** the AI lookup at any time.
 
@@ -156,8 +157,8 @@ Once enabled, two options appear:
 
 | Option | What it does | Cost |
 | --- | --- | --- |
-| **Get AI dates** | Bulk-fills years from the AI model's own knowledge. Pause / resume any time. | ~0.007¢ per song |
-| **Web search** 🔍 | Per-song lookup using a live web search — more accurate for obscure tracks. | ~0.5¢ per query |
+| **Get AI dates** 🔍 | Fills years for the **selected** songs from the AI model's own knowledge. Pause / resume any time. | ~0.007¢ per song |
+| **Web search** | Toggle on for a live web search per lookup — more accurate for obscure tracks. | ~0.5¢ per query |
 
 > 💡 **Web search is off by default** and must be toggled on (with a confirmation prompt) — each query costs far more than a regular lookup (≈70×, per the table above).
 
@@ -171,7 +172,9 @@ If `VITE_DATES_ENABLED` is absent or not exactly `true`, the entire AI feature s
 
 - **Edit cards inline** — Click the **title**, **artist**, or **year** directly on the preview card to edit it. Changes save as soon as you click away.
 
-- **Add / Import** — Paste any Spotify **track**, **album**, or **playlist** link and the type is detected automatically. Tracks and albums work without logging in; importing a **playlist** requires being signed in to Spotify.
+- **Add / Import** — Paste any Spotify **track**, **album**, **playlist**, or **Liked Songs** link and the type is detected automatically. Tracks and albums work without logging in; importing a **playlist** or your **Liked Songs** requires being signed in to Spotify.
+
+- **Select rows** — Use the row checkboxes to multiselect songs (shift-click for a range, or the header checkbox to select all). Deleting a selected row removes the whole selection at once, and the AI date lookup runs on the selected songs.
 
 - **Pick which year prints (AI mode)** — Each song row shows two suggested years side by side: the **Spotify** year and the **AI** year. Click either value to set it as the year printed on the card (shown in the **Card** column).
 

@@ -147,7 +147,23 @@ const RowCheckbox = styled.input`
   height: 16px;
   flex-shrink: 0;
   margin: 0;
-  cursor: pointer;
+  cursor: inherit;
+`
+
+// The row's selection hit-zone: wraps the checkbox AND the song number, and
+// stretches to fill the row's full height (the negative margins cancel the
+// ListItem's 8px vertical and 12px left padding) so clicks anywhere over the
+// checkbox, the number, or the blank space above/below them toggle the
+// selection instead of single-selecting the row. A copy/cell cursor marks the
+// zone as distinct from the rest of the row (which uses the default pointer).
+const CheckZone = styled.div`
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 8px;
+  margin: -8px 0 -8px -12px;
+  padding: 0 0 0 12px;
+  cursor: copy;
 `
 
 const CopyBtn = styled.button`
@@ -291,20 +307,23 @@ export function SongList({
               $preview={card.id === previewId}
               onClick={() => onSelectSingle(card.id)}
             >
-              <RowCheckbox
-                type="checkbox"
-                checked={selectedIds.has(card.id)}
-                // Shift adds a range up to this row; a plain click toggles just
-                // this row. stopPropagation keeps the row's single-select from
-                // firing. onChange is a no-op (the click handler owns it).
+              <CheckZone
+                // The whole zone is the hit target: shift adds a range up to this
+                // row, a plain click toggles just this row. stopPropagation keeps
+                // the row's single-select from firing.
                 onClick={e => {
                   e.stopPropagation()
                   if (e.shiftKey) onRange(card.id)
                   else onToggle(card.id)
                 }}
-                onChange={() => {}}
-              />
-              <ListItemNum>{idx + 1}</ListItemNum>
+              >
+                <RowCheckbox
+                  type="checkbox"
+                  checked={selectedIds.has(card.id)}
+                  onChange={() => {}}
+                />
+                <ListItemNum>{idx + 1}</ListItemNum>
+              </CheckZone>
               <ListItemName>{card.trackInfo.name}</ListItemName>
               <ListItemArtist>{card.trackInfo.artist}</ListItemArtist>
               {ai ? (

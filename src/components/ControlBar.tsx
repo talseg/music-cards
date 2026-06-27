@@ -13,10 +13,8 @@ const Bar = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
   flex-wrap: wrap;
   width: 100%;
-  max-width: 1000px;
 `
 
 const AuthStatus = styled.span`

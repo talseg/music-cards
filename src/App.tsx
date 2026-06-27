@@ -11,7 +11,7 @@ import styled from 'styled-components'
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 
-const AppWrapper = styled.div`
+const AppContainer = styled.div`
   display: flex;
   flex-direction: column;
   padding: 32px 40px;
@@ -19,7 +19,7 @@ const AppWrapper = styled.div`
   background: #fafafa;
 `
 
-const TopPanel = styled.div`
+const ItemsContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -51,18 +51,18 @@ function App() {
   const ai = useAiDates(cards, clearError)
 
   return (
-    <AppWrapper className='app_wrapper'>
-      {/* Top control bar: login status + Generate PDF + AI dates + counter + sheets + version */}
-      <ControlBar
-        auth={auth}
-        onLogin={login}
-        onLogout={logout}
-        songs={songsInterface}
-        ai={ai}
-      />
-      {auth.kind === 'out' && auth.error && <AuthError>{auth.error}</AuthError>}
+    <AppContainer className='app_wrapper'>
+      <ItemsContainer>
+        {/* Top control bar: login status + Generate PDF + AI dates + counter + sheets + version */}
+        <ControlBar
+          auth={auth}
+          onLogin={login}
+          onLogout={logout}
+          songs={songsInterface}
+          ai={ai}
+        />
+        {auth.kind === 'out' && auth.error && <AuthError>{auth.error}</AuthError>}
 
-      <TopPanel>
         {/* Redirect URI hint when logged out */}
         {auth.kind === 'out' && <RedirectUriHint />}
 
@@ -77,7 +77,7 @@ function App() {
           onApplyYear={(id, year) => updateCardField(id, 'year', year)}
           onDelete={handleDelete}
         />
-      </TopPanel>
+      </ItemsContainer>
 
       <SheetPreview
         cards={cards}
@@ -88,7 +88,7 @@ function App() {
 
       {/* Hidden onfirmation dialog */}
       <WebSearchConfirmModal ai={ai} />
-    </AppWrapper>
+    </AppContainer>
   )
 }
 

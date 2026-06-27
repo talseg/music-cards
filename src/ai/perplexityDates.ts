@@ -95,7 +95,7 @@ export async function getSuggestedYear(
   const data = await response.json()
 
   if (DEBUG_MODEL_ANSWER) {
-    console.log(`Using Model: ${MODEL} Prompt:\n${buildPrompt(songName, artistName)}\n\nAnswer:\n${JSON.stringify(data)} \n`);
+    console.log(`Using Model: ${MODEL} Web Search:${webSearch ? "On" : "Off"} Prompt:\n${buildPrompt(songName, artistName)}\n\nAnswer:\n${JSON.stringify(data)} \n`);
   }
 
   const text = extractText(data)

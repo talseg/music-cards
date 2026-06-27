@@ -1,6 +1,5 @@
 import { useRef, useEffect } from 'react'
 import styled from 'styled-components'
-import { DATES_ENABLED } from '../common/constants'
 import { trackIdOf } from '../common/helpers'
 import type { CardData } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
@@ -214,7 +213,9 @@ const DeleteBtn = styled.button`
 interface SongListProps {
   cards: CardData[]
   selectedId: number | null
-  ai: AiState
+  // Undefined when the AI-dates feature is disabled; its presence drives the
+  // extra year/cost columns and the per-row web-search button (see useAiDates).
+  ai?: AiState
   onSelect: (id: number) => void
   onApplyYear: (id: number, year: string) => void
   onDelete: (id: number) => void
@@ -228,7 +229,6 @@ export function SongList({
   onApplyYear,
   onDelete,
 }: SongListProps) {
-  const { aiDates, webSearchEnabled, webSearchingId, onWebSearch } = ai
   // Maps each card id to its <ListItem> DOM node, so we can scroll the
   // selected song into view in the list whenever the selection changes.
   const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -243,7 +243,7 @@ export function SongList({
 
   return (
     <ListPanel className='list_panel'>
-      {DATES_ENABLED && cards.length > 0 && (
+      {ai && cards.length > 0 && (
         <ListHeader>
           <HeadNum>#</HeadNum>
           <HeadName>Song</HeadName>
@@ -261,11 +261,11 @@ export function SongList({
         {cards.length === 0
           ? <ListEmpty>No songs yet — paste a Spotify URL above and press Add</ListEmpty>
           : cards.map((card, idx) => {
-            const ai = DATES_ENABLED ? aiDates.get(trackIdOf(card)) : undefined
-            const aiError = typeof ai?.year === 'string'
+            const aiDate = ai ? ai.aiDates.get(trackIdOf(card)) : undefined
+            const aiError = typeof aiDate?.year === 'string'
             const spotifyMatch = card.spotifyYear === card.trackInfo.year.trim()
-            const aiMatch = !!ai && !aiError &&
-              String(ai.year) === card.trackInfo.year.trim()
+            const aiMatch = !!aiDate && !aiError &&
+              String(aiDate.year) === card.trackInfo.year.trim()
             return (
             <ListItem
               key={card.id}
@@ -279,7 +279,7 @@ export function SongList({
               <ListItemNum>{idx + 1}</ListItemNum>
               <ListItemName>{card.trackInfo.name}</ListItemName>
               <ListItemArtist>{card.trackInfo.artist}</ListItemArtist>
-              {DATES_ENABLED && (
+              {ai ? (
                 <>
                   <ListItemYearSource
                     $match={spotifyMatch}
@@ -291,21 +291,20 @@ export function SongList({
                     {card.spotifyYear}
                   </ListItemYearSource>
                   <ListItemYearSource
-                    $match={ai ? aiMatch : null}
-                    $clickable={!!ai && !aiError && !aiMatch}
-                    onClick={ai && !aiError && !aiMatch ? () => {
-                      onApplyYear(card.id, String(ai.year))
+                    $match={aiDate ? aiMatch : null}
+                    $clickable={!!aiDate && !aiError && !aiMatch}
+                    onClick={aiDate && !aiError && !aiMatch ? () => {
+                      onApplyYear(card.id, String(aiDate.year))
                     } : undefined}
                   >
-                    {ai ? ai.year : '----'}
+                    {aiDate ? aiDate.year : '----'}
                   </ListItemYearSource>
                   <ListItemCard>{card.trackInfo.year}</ListItemCard>
                   <ListItemCost>
-                    {ai ? (ai.cost * 100).toFixed(3) : ''}
+                    {aiDate ? (aiDate.cost * 100).toFixed(3) : ''}
                   </ListItemCost>
                 </>
-              )}
-              {!DATES_ENABLED && (
+              ) : (
                 <ListItemYear>{card.trackInfo.year}</ListItemYear>
               )}
               <CopyBtn
@@ -316,15 +315,15 @@ export function SongList({
                 >
                 ⧉
               </CopyBtn>
-              {DATES_ENABLED && webSearchEnabled && (
+              {ai && ai.webSearchEnabled && (
                 <SearchBtn
                   title="Web search for release year"
-                  disabled={webSearchingId === trackIdOf(card)}
+                  disabled={ai.webSearchingId === trackIdOf(card)}
                   onClick={() => {
-                    onWebSearch(card)
+                    ai.onWebSearch(card)
                   }}
                 >
-                  {webSearchingId === trackIdOf(card) ? '…' : '🔍'}
+                  {ai.webSearchingId === trackIdOf(card) ? '…' : '🔍'}
                 </SearchBtn>
               )}
               <DeleteBtn

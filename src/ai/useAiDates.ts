@@ -40,8 +40,10 @@ export interface AiState {
 
 // Owns the AI release-year feature: per-song results, the run/pause state
 // machine, the per-song web search, the web-search cost gate (+ its confirm
-// modal flag), and the persisted lifetime spend total.
-export function useAiDates(cards: CardData[], clearError: () => void): AiState {
+// modal flag), and the persisted lifetime spend total. Returns `undefined` when
+// the feature is disabled (DATES_ENABLED is false), so consumers can treat the
+// presence of the returned state as "feature active" — no separate flag needed.
+export function useAiDates(cards: CardData[], clearError: () => void): AiState | undefined {
   // AI release-year results, keyed by Spotify track id. Presence of an entry =
   // "already queried" (so the same song isn't queried twice). Entries persist
   // when songs are removed, so re-adding a song restores its previous result.
@@ -73,8 +75,9 @@ export function useAiDates(cards: CardData[], clearError: () => void): AiState {
   }, [totalCost])
 
   // A song is "unqueried" iff it has no aiDates entry yet. The button is enabled
-  // exactly when at least one song is unqueried.
-  const hasUnqueried = DATES_ENABLED && cards.some(c => !aiDates.has(trackIdOf(c)))
+  // exactly when at least one song is unqueried. (No DATES_ENABLED guard needed:
+  // the hook returns undefined entirely when the feature is off.)
+  const hasUnqueried = cards.some(c => !aiDates.has(trackIdOf(c)))
 
   // Run the AI-dates pass over only the songs that haven't been queried yet.
   // Sequential (no added delay) so rows fill in live and we stay gentle on rate
@@ -192,6 +195,10 @@ export function useAiDates(cards: CardData[], clearError: () => void): AiState {
       setWebSearchingId(null)
     }
   }
+
+  // Fail-closed: when the feature is off, expose nothing. All hooks above still
+  // run unconditionally (Rules of Hooks); only the returned value is gated.
+  if (!DATES_ENABLED) return undefined
 
   return {
     // ControlBar wiring

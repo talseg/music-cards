@@ -38,8 +38,8 @@ const ModalActions = styled.div`
 
 // ─── WebSearchConfirmModal ──────────────────────────────────────────────────────
 
-export function WebSearchConfirmModal({ ai }: { ai: AiState }) {
-  if (!ai.confirmWebSearch) return null
+export function WebSearchConfirmModal({ ai }: { ai?: AiState }) {
+  if (!ai?.confirmWebSearch) return null
 
   return (
     <ModalOverlay onClick={ai.closeWebSearchConfirm}>

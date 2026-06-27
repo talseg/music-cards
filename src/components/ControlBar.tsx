@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import styled from 'styled-components'
 import { version } from '../../package.json'
-import { DATES_ENABLED } from '../common/constants'
 import { sheetCount } from '../common/helpers'
 import type { AuthState } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
@@ -153,7 +152,9 @@ interface ControlBarProps {
   onLogin: () => void
   onLogout: () => void
   songs: SongsInterface
-  ai: AiState
+  // Undefined when the AI-dates feature is disabled; its presence is what marks
+  // the feature active (see useAiDates).
+  ai?: AiState
 }
 
 // The app's top control bar: auth status/login + Generate PDF + Clear + AI dates +
@@ -174,15 +175,6 @@ export function ControlBar({
     handleClearSongs: onClearSongs,
   } = songs
   const cardCount = cards.length
-  const {
-    aiStatus,
-    hasUnqueried,
-    onDatesButton,
-    webSearchEnabled,
-    onToggleWebSearch,
-    totalCost,
-    onCommitTotalCost,
-  } = ai
   // Free-text mirror of totalCost while the field is focused, so typing (incl.
   // intermediate states like "0.") isn't fought by the numeric value.
   const [totalCostInput, setTotalCostInput] = useState<string | null>(null)
@@ -213,44 +205,44 @@ export function ControlBar({
         Clear Songs
       </Button>
       <Button
-        onClick={DATES_ENABLED ? onDatesButton : undefined}
-        // Disabled when idle with nothing to query, and during 'pausing' (the
-        // stop is committed, just finishing the current song). While running
-        // it's the Pause control; while paused it's the Resume control.
-        disabled={!DATES_ENABLED || aiStatus === 'pausing' || (aiStatus === 'idle' && !hasUnqueried)}
-        title={!DATES_ENABLED ? 'AI dates feature is disabled.\nAdd PERPLEXITY_API_KEY and set VITE_DATES_ENABLED=true in .env to enable.' : undefined}
+        onClick={ai ? ai.onDatesButton : undefined}
+        // Disabled when the feature is off, when idle with nothing to query, and
+        // during 'pausing' (the stop is committed, just finishing the current
+        // song). While running it's the Pause control; while paused it's Resume.
+        disabled={!ai || ai.aiStatus === 'pausing' || (ai.aiStatus === 'idle' && !ai.hasUnqueried)}
+        title={!ai ? 'AI dates feature is disabled.\nAdd PERPLEXITY_API_KEY and set VITE_DATES_ENABLED=true in .env to enable.' : undefined}
       >
-        {aiStatus === 'running'
+        {ai?.aiStatus === 'running'
           ? 'Pause'
-          : aiStatus === 'pausing'
+          : ai?.aiStatus === 'pausing'
             ? 'Pausing…'
-            : aiStatus === 'paused'
+            : ai?.aiStatus === 'paused'
               ? 'Resume'
               : 'Get AI dates'}
       </Button>
-      {DATES_ENABLED && (
+      {ai && (
         <>
-          <ToggleLabel title={webSearchEnabled ? 'Disable web search' : 'Enable web search (≈0.5¢ per query)'}>
+          <ToggleLabel title={ai.webSearchEnabled ? 'Disable web search' : 'Enable web search (≈0.5¢ per query)'}>
             Web search
             <Toggle
               type="button"
-              $on={webSearchEnabled}
+              $on={ai.webSearchEnabled}
               role="switch"
-              aria-checked={webSearchEnabled}
-              onClick={onToggleWebSearch}
+              aria-checked={ai.webSearchEnabled}
+              onClick={ai.onToggleWebSearch}
             />
           </ToggleLabel>
           <AuthStatus>Total $</AuthStatus>
           <input
             type="text"
             inputMode="decimal"
-            value={totalCostInput ?? totalCost.toFixed(5)}
-            onFocus={() => setTotalCostInput(totalCost.toFixed(5))}
+            value={totalCostInput ?? ai.totalCost.toFixed(5)}
+            onFocus={() => setTotalCostInput(ai.totalCost.toFixed(5))}
             onChange={e => setTotalCostInput(e.target.value)}
             onBlur={() => {
               const parsed = Number(totalCostInput)
               if (totalCostInput !== null && Number.isFinite(parsed) && parsed >= 0) {
-                onCommitTotalCost(parsed)
+                ai.onCommitTotalCost(parsed)
               }
               setTotalCostInput(null)
             }}

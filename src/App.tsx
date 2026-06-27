@@ -53,7 +53,7 @@ function App() {
     handleDelete,
     updateCardField,
   } = songsInterface
-  const ai = useAiDates(clearError)
+  const ai = useAiDates(clearError, selectedIds)
 
   return (
     <AppContainer className='app_wrapper'>

@@ -47,7 +47,7 @@ export interface AiState {
 // spend total. Returns `undefined` when the feature is disabled (DATES_ENABLED is
 // false), so consumers can treat the presence of the returned state as "feature
 // active" — no separate flag needed.
-export function useAiDates(clearError: () => void): AiState | undefined {
+export function useAiDates(clearError: () => void, selectedIds: Set<number>): AiState | undefined {
   // AI release-year results, keyed by Spotify track id. Presence of an entry =
   // "already queried" (so the same song isn't queried twice). Entries persist
   // when songs are removed, so re-adding a song restores its previous result.
@@ -60,6 +60,10 @@ export function useAiDates(clearError: () => void): AiState | undefined {
   // visible — a ref always reflects the latest value.
   const [aiStatus, setAiStatus] = useState<AiStatus>('idle')
   const pauseRef = useRef(false)
+  // "Stop and forget" — set when the selection changes mid-run, vs pauseRef's
+  // "stop and keep". Both stop the loop between songs (abort also sets pauseRef),
+  // but abort drains the queue and lands on 'idle' instead of 'paused'.
+  const abortRef = useRef(false)
   const [webSearchingId, setWebSearchingId] = useState<string | null>(null)
   // Global gate for the per-song web-search buttons. Starts disabled every load
   // (not persisted) so a paid feature is never silently on. Enabling it requires
@@ -85,6 +89,32 @@ export function useAiDates(clearError: () => void): AiState | undefined {
   const runQueueRef = useRef<CardData[]>([])
   const webSearchForRunRef = useRef(false)
 
+  // A selection change cancels any active search and returns to 🔍 idle. We don't
+  // diff or re-queue (deliberately simple): the next 🔍 press re-runs over the new
+  // selection. Skip the very first render so mounting an existing selection isn't
+  // treated as a "change". Only acts when there's actually a run to cancel.
+  const firstSelectionRender = useRef(true)
+  useEffect(() => {
+    if (firstSelectionRender.current) { firstSelectionRender.current = false; return }
+    if (aiStatus === 'running' || aiStatus === 'pausing') {
+      // A loop is live: tell it to stop between songs AND to forget the queue.
+      abortRef.current = true
+      pauseRef.current = true
+    } else if (aiStatus === 'paused') {
+      // No loop running: clear the leftover queue ourselves. This setState is a
+      // direct response to a user selection change (not derived render state), so
+      // the cascading-render concern the rule guards against doesn't apply.
+      runQueueRef.current = []
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAiStatus('idle')
+    }
+    // 'idle' → nothing to cancel.
+    // aiStatus is read but intentionally NOT a dep — we react only to selection
+    // changes, reading the latest status at fire time (same read-latest intent as
+    // the refs above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds])
+
   // The sequential run loop. Pulls songs off runQueueRef one at a time, querying
   // each (web search per webSearchForRunRef) and accumulating its cost onto the
   // song's running total and the lifetime total. Sequential so rows fill in live
@@ -94,6 +124,7 @@ export function useAiDates(clearError: () => void): AiState | undefined {
   const runLoop = async () => {
     setAiStatus('running')
     clearError()
+    abortRef.current = false
     let interrupted = false
     try {
       while (runQueueRef.current.length > 0) {
@@ -133,9 +164,15 @@ export function useAiDates(clearError: () => void): AiState | undefined {
       }
     } finally {
       setWebSearchingId(null)
-      // 'paused' only if we stopped with work remaining; a fully-drained queue
-      // (or a pause requested on the last song) ends as 'idle'.
-      setAiStatus(interrupted ? 'paused' : 'idle')
+      if (abortRef.current) {
+        // Selection changed mid-run: drop whatever's left and go back to 🔍 idle.
+        runQueueRef.current = []
+        setAiStatus('idle')
+      } else {
+        // 'paused' only if we stopped with work remaining; a fully-drained queue
+        // (or a pause requested on the last song) ends as 'idle'.
+        setAiStatus(interrupted ? 'paused' : 'idle')
+      }
     }
   }
 

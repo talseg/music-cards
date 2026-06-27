@@ -42,13 +42,18 @@ function App() {
   const songsInterface = useSongs(loggedIn)
   const {
     cards,
-    selectedId,
-    setSelectedId,
+    selectedIds,
+    previewId,
+    selectSingle,
+    toggleSelect,
+    selectRange,
+    toggleSelectAll,
+    navigatePreview,
     clearError,
     handleDelete,
     updateCardField,
   } = songsInterface
-  const ai = useAiDates(cards, clearError)
+  const ai = useAiDates(clearError)
 
   return (
     <AppContainer className='app_wrapper'>
@@ -71,17 +76,23 @@ function App() {
         {/* Song list */}
         <SongList
           cards={cards}
-          selectedId={selectedId}
+          selectedIds={selectedIds}
+          previewId={previewId}
           ai={ai}
-          onSelect={setSelectedId}
+          onSelectSingle={selectSingle}
+          onToggle={toggleSelect}
+          onRange={selectRange}
+          onToggleAll={toggleSelectAll}
           onApplyYear={(id, year) => updateCardField(id, 'year', year)}
           onDelete={handleDelete}
         />
 
         <SheetPreview
           cards={cards}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
+          selectedIds={selectedIds}
+          previewId={previewId}
+          onSelect={selectSingle}
+          onNavigate={navigatePreview}
           onFieldChange={updateCardField}
         />
         

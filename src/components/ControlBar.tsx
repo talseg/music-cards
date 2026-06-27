@@ -155,8 +155,9 @@ interface ControlBarProps {
   ai?: AiState
 }
 
-// The app's top control bar: auth status/login + Generate PDF + Clear + AI dates +
-// web-search toggle / Total-$ + song counter + sheet count + version.
+// The app's top control bar: auth status/login + Generate PDF + AI glass (date
+// the selection) + Pause/Resume + web-search toggle / Total-$ + song counter +
+// sheet count + version.
 export function ControlBar({
   auth,
   onLogin,
@@ -166,13 +167,17 @@ export function ControlBar({
 }: ControlBarProps) {
   const {
     cards,
+    selectedIds,
     songCounter,
     setSongCounter: onSongCounterChange,
     pdfLoading,
     handleGeneratePdf: onGeneratePdf,
-    handleClearSongs: onClearSongs,
   } = songs
   const cardCount = cards.length
+  // The songs the AI glass acts on. Computed here (not stored) so it always
+  // matches the current selection and card list.
+  const selectedCards = cards.filter(c => selectedIds.has(c.id))
+  const aiRunning = ai?.aiStatus === 'running' || ai?.aiStatus === 'pausing'
   // Free-text mirror of totalCost while the field is focused, so typing (incl.
   // intermediate states like "0.") isn't fought by the numeric value.
   const [totalCostInput, setTotalCostInput] = useState<string | null>(null)
@@ -195,31 +200,25 @@ export function ControlBar({
       >
         {pdfLoading ? 'Generating…' : 'Generate PDF'}
       </Button>
-      <Button
-        onClick={onClearSongs}
-        disabled={cardCount === 0}
-        title="Remove all songs from the list"
-      >
-        Clear Songs
-      </Button>
-      <Button
-        onClick={ai ? ai.onDatesButton : undefined}
-        // Disabled when the feature is off, when idle with nothing to query, and
-        // during 'pausing' (the stop is committed, just finishing the current
-        // song). While running it's the Pause control; while paused it's Resume.
-        disabled={!ai || ai.aiStatus === 'pausing' || (ai.aiStatus === 'idle' && !ai.hasUnqueried)}
-        title={!ai ? 'AI dates feature is disabled.\nAdd PERPLEXITY_API_KEY and set VITE_DATES_ENABLED=true in .env to enable.' : undefined}
-      >
-        {ai?.aiStatus === 'running'
-          ? 'Pause'
-          : ai?.aiStatus === 'pausing'
-            ? 'Pausing…'
-            : ai?.aiStatus === 'paused'
-              ? 'Resume'
-              : 'Get AI dates'}
-      </Button>
       {ai && (
         <>
+          <Button
+            onClick={() => ai.onRunSelected(selectedCards)}
+            // The glass (re-)queries the selected songs. Disabled with nothing
+            // selected or while a run is in flight (use Pause/Resume for that).
+            disabled={selectedCards.length === 0 || aiRunning}
+            title="Get AI dates for the selected songs"
+          >
+            🔍
+          </Button>
+          <Button
+            onClick={ai.onPauseResume}
+            // Only live while a run is in flight: Pause it, or Resume a paused one.
+            disabled={ai.aiStatus === 'idle' || ai.aiStatus === 'pausing'}
+            title="Pause / resume the AI run"
+          >
+            {ai.aiStatus === 'pausing' ? 'Pausing…' : ai.aiStatus === 'paused' ? 'Resume' : 'Pause'}
+          </Button>
           <ToggleLabel title={ai.webSearchEnabled ? 'Disable web search' : 'Enable web search (≈0.5¢ per query)'}>
             Web search
             <Toggle

@@ -22,16 +22,19 @@ function round5(n: number): number {
 export interface AiState {
   // ControlBar wiring
   aiStatus: AiStatus
-  hasUnqueried: boolean
-  onDatesButton: () => void
+  // Glass button: (re-)query the given songs (the current selection). Re-queries
+  // even already-dated songs and accumulates their cost. Web-search-aware.
+  onRunSelected: (cards: CardData[]) => void
+  // Pause/Resume button: pause an in-flight run, or resume a paused one.
+  onPauseResume: () => void
   webSearchEnabled: boolean
   onToggleWebSearch: () => void
   totalCost: number
   onCommitTotalCost: (value: number) => void
   // SongList wiring
   aiDates: Map<string, AiDate>
+  // Track id of the song being queried right now (for the row's progress dots).
   webSearchingId: string | null
-  onWebSearch: (card: CardData) => void
   // Confirm modal
   confirmWebSearch: boolean
   confirmWebSearchYes: () => void
@@ -39,11 +42,12 @@ export interface AiState {
 }
 
 // Owns the AI release-year feature: per-song results, the run/pause state
-// machine, the per-song web search, the web-search cost gate (+ its confirm
-// modal flag), and the persisted lifetime spend total. Returns `undefined` when
-// the feature is disabled (DATES_ENABLED is false), so consumers can treat the
-// presence of the returned state as "feature active" — no separate flag needed.
-export function useAiDates(cards: CardData[], clearError: () => void): AiState | undefined {
+// machine over a caller-supplied set of songs (the current selection), the
+// web-search cost gate (+ its confirm modal flag), and the persisted lifetime
+// spend total. Returns `undefined` when the feature is disabled (DATES_ENABLED is
+// false), so consumers can treat the presence of the returned state as "feature
+// active" — no separate flag needed.
+export function useAiDates(clearError: () => void): AiState | undefined {
   // AI release-year results, keyed by Spotify track id. Presence of an entry =
   // "already queried" (so the same song isn't queried twice). Entries persist
   // when songs are removed, so re-adding a song restores its previous result.
@@ -74,74 +78,87 @@ export function useAiDates(cards: CardData[], clearError: () => void): AiState |
     localStorage.setItem(TOTAL_COST_KEY, String(totalCost))
   }, [totalCost])
 
-  // A song is "unqueried" iff it has no aiDates entry yet. The button is enabled
-  // exactly when at least one song is unqueried. (No DATES_ENABLED guard needed:
-  // the hook returns undefined entirely when the feature is off.)
-  const hasUnqueried = cards.some(c => !aiDates.has(trackIdOf(c)))
+  // The queue of songs still to process in the current run, and whether that run
+  // uses web search. Refs (not state): the loop reads them synchronously, and on
+  // resume we continue from whatever's left here. Songs are re-queried even if
+  // already dated, so we can't recover the remainder from aiDates — we track it.
+  const runQueueRef = useRef<CardData[]>([])
+  const webSearchForRunRef = useRef(false)
 
-  // Run the AI-dates pass over only the songs that haven't been queried yet.
-  // Sequential (no added delay) so rows fill in live and we stay gentle on rate
-  // limits. Each call's cost accumulates into the persisted lifetime total.
-  //
-  // This is both "start" and "resume": pending is recomputed from the current
-  // aiDates each time, so songs already done in a prior (paused) pass are skipped
-  // and we naturally continue where we stopped.
-  const runDates = async () => {
-    if (aiStatus === 'running' || aiStatus === 'pausing') return
-    const pending = cards.filter(c => !aiDates.has(trackIdOf(c)))
-    if (pending.length === 0) return
-
-    pauseRef.current = false
+  // The sequential run loop. Pulls songs off runQueueRef one at a time, querying
+  // each (web search per webSearchForRunRef) and accumulating its cost onto the
+  // song's running total and the lifetime total. Sequential so rows fill in live
+  // and we stay gentle on rate limits. Pause stops it between songs (the in-flight
+  // call always finishes and is saved). Shared by both start (onRunSelected) and
+  // resume (onPauseResume).
+  const runLoop = async () => {
     setAiStatus('running')
     clearError()
     let interrupted = false
     try {
-      for (const card of pending) {
-        // Pause takes effect between songs: a request already in flight always
-        // finishes and is saved; we just stop before starting the next one.
+      while (runQueueRef.current.length > 0) {
         if (pauseRef.current) {
           interrupted = true
           break
         }
+        const card = runQueueRef.current[0]
         const id = trackIdOf(card)
+        setWebSearchingId(id)
         try {
           const { year, cost } = await getSuggestedYear(
             card.trackInfo.name,
             card.trackInfo.artist,
+            undefined,
+            webSearchForRunRef.current,
           )
+          // Accumulate onto whatever this song already spent, so the row shows
+          // its lifetime total across every query run on it.
           setAiDates(prev => {
             const next = new Map(prev)
-            next.set(id, { year, cost: round5(cost) })
+            const prevCost = prev.get(id)?.cost ?? 0
+            next.set(id, { year, cost: round5(prevCost + cost) })
             return next
           })
           if (cost > 0) setTotalCost(prev => round5(prev + cost))
         } catch {
-          // Network / HTTP failure: mark the row so it's visibly flagged and
-          // won't be retried on the next press (a non-empty entry = queried).
+          // Network / HTTP failure: flag the year but keep the accumulated cost.
           setAiDates(prev => {
             const next = new Map(prev)
-            next.set(id, { year: 'Error', cost: 0 })
+            const prevCost = prev.get(id)?.cost ?? 0
+            next.set(id, { year: 'Error', cost: prevCost })
             return next
           })
         }
+        runQueueRef.current = runQueueRef.current.slice(1)
       }
     } finally {
-      // 'paused' only if we stopped with work remaining; a fully-completed pass
+      setWebSearchingId(null)
+      // 'paused' only if we stopped with work remaining; a fully-drained queue
       // (or a pause requested on the last song) ends as 'idle'.
       setAiStatus(interrupted ? 'paused' : 'idle')
     }
   }
 
-  // Button action: while running, a press requests a pause (the loop stops after
-  // the current song). Otherwise it starts or resumes the pass.
-  const handleDatesButton = () => {
+  // Glass button: start a fresh run over the selected songs. Ignored when a run
+  // is already in flight or the selection is empty.
+  const handleRunSelected = (selectedCards: CardData[]) => {
+    if (aiStatus === 'running' || aiStatus === 'pausing') return
+    if (selectedCards.length === 0) return
+    pauseRef.current = false
+    runQueueRef.current = [...selectedCards]
+    webSearchForRunRef.current = webSearchEnabled
+    runLoop()
+  }
+
+  // Pause/Resume button: a press while running requests a pause (the loop stops
+  // after the current song); a press while paused resumes the remaining queue.
+  const handlePauseResume = () => {
     if (aiStatus === 'running') {
-      // Request a pause; the loop stops after the current song finishes. Show
-      // 'pausing' in the meantime so the label reflects the in-progress stop.
       pauseRef.current = true
       setAiStatus('pausing')
-    } else if (aiStatus !== 'pausing') {
-      runDates()
+    } else if (aiStatus === 'paused') {
+      pauseRef.current = false
+      runLoop()
     }
   }
 
@@ -163,39 +180,6 @@ export function useAiDates(cards: CardData[], clearError: () => void): AiState |
   }
   const closeWebSearchConfirm = () => setConfirmWebSearch(false)
 
-  const handleWebSearch = async (card: CardData) => {
-    const id = trackIdOf(card)
-    if (webSearchingId === id) return
-    setWebSearchingId(id)
-    try {
-      const { year, cost } = await getSuggestedYear(
-        card.trackInfo.name,
-        card.trackInfo.artist,
-        undefined,
-        true,
-      )
-      // Accumulate this query's cost onto whatever the song already spent, so
-      // the row shows the song's lifetime total across all its queries.
-      setAiDates(prev => {
-        const next = new Map(prev)
-        const prevCost = prev.get(id)?.cost ?? 0
-        next.set(id, { year, cost: round5(prevCost + cost) })
-        return next
-      })
-      if (cost > 0) setTotalCost(prev => round5(prev + cost))
-    } catch {
-      // Failed query: keep the accumulated cost, just flag the year.
-      setAiDates(prev => {
-        const next = new Map(prev)
-        const prevCost = prev.get(id)?.cost ?? 0
-        next.set(id, { year: 'Error', cost: prevCost })
-        return next
-      })
-    } finally {
-      setWebSearchingId(null)
-    }
-  }
-
   // Fail-closed: when the feature is off, expose nothing. All hooks above still
   // run unconditionally (Rules of Hooks); only the returned value is gated.
   if (!DATES_ENABLED) return undefined
@@ -203,8 +187,8 @@ export function useAiDates(cards: CardData[], clearError: () => void): AiState |
   return {
     // ControlBar wiring
     aiStatus,
-    hasUnqueried,
-    onDatesButton: handleDatesButton,
+    onRunSelected: handleRunSelected,
+    onPauseResume: handlePauseResume,
     webSearchEnabled,
     onToggleWebSearch: handleToggleWebSearch,
     totalCost,
@@ -212,7 +196,6 @@ export function useAiDates(cards: CardData[], clearError: () => void): AiState |
     // SongList wiring
     aiDates,
     webSearchingId,
-    onWebSearch: handleWebSearch,
     // Confirm modal (rendered in App)
     confirmWebSearch,
     confirmWebSearchYes,

@@ -15,10 +15,27 @@ import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
 const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
 
 // The song domain exposed to the app. The return shape of useSongs.
+//
+// Selection has three independent parts (see the state in useSongs for the why):
+//   selectedIds  - the multi-selection set (green / operated-on); may be empty.
+//   previewId    - the single song the preview pages to; moves only on a plain
+//                  row/preview-card click, never from checkboxes; survives an
+//                  empty selection so "unselect all" leaves the preview put.
+//   (pivot)      - the shift-range anchor; internal (a ref), not exposed.
 export interface SongsInterface {
   cards: CardData[]
-  selectedId: number | null
-  setSelectedId: Dispatch<SetStateAction<number | null>>
+  selectedIds: Set<number>
+  previewId: number | null
+  // Plain row / preview-card click: collapse to a single-selection of `id`.
+  selectSingle: (id: number) => void
+  // Checkbox click: toggle `id` in/out of the selection (and set the pivot).
+  toggleSelect: (id: number) => void
+  // Shift-click a checkbox: select the range pivot…id (the pivot stays put).
+  selectRange: (id: number) => void
+  // Header checkbox: select all when not all selected, else clear to empty.
+  toggleSelectAll: () => void
+  // Sheet arrows: move the preview without touching the selection.
+  navigatePreview: (id: number) => void
   songCounter: number
   setSongCounter: Dispatch<SetStateAction<number>>
   input: string
@@ -34,7 +51,6 @@ export interface SongsInterface {
   handleDelete: (id: number) => void
   updateCardField: (id: number, field: 'name' | 'artist' | 'year', value: string) => void
   handleGeneratePdf: () => Promise<void>
-  handleClearSongs: () => void
 }
 
 // Owns the song domain: the card list, selection, the persisted song counter,
@@ -45,7 +61,14 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
   const [input, setInput] = useState('')
   const [importing, setImporting] = useState(false)
   const [cards, setCards] = useState<CardData[]>([])
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  // Multi-selection (green / operated-on); may be empty.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  // The song the preview pages to. Decoupled from selectedIds so it survives an
+  // empty selection and isn't yanked around by checkbox toggles.
+  const [previewId, setPreviewId] = useState<number | null>(null)
+  // Shift-range anchor. A ref (not state): nothing renders from it, and the
+  // selection handlers need to read the latest value synchronously.
+  const pivotRef = useRef<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [songCounter, setSongCounter] = useState(() => {
     const stored = localStorage.getItem(SONG_COUNTER_KEY)
@@ -117,10 +140,12 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
       }
 
       setCards(prev => [...prev, ...newCards])
-      setSelectedId(newCards[0].id)
-      setSongCounter(prev => prev + newCards.length)
+      selectSingle(newCards[0].id)
       setInput('')
-      if (link.kind === 'track') inputRef.current?.focus()
+      if (link.kind === 'track') {
+        setSongCounter(prev => prev + 1)
+        inputRef.current?.focus()
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to import')
     } finally {
@@ -128,18 +153,81 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     }
   }
 
-  const handleDelete = (id: number) => {
-    // If the deleted card is selected, move selection to the card after it
-    // (or the one before, or nothing). Computed here from current state rather
-    // than inside the setCards updater, which must stay side-effect free.
-    if (selectedId === id) {
-      const idx = cards.findIndex(c => c.id === id)
-      const remaining = cards.filter(c => c.id !== id)
-      const nextCard = remaining[idx] ?? remaining[idx - 1] ?? null
-      setSelectedId(nextCard ? nextCard.id : null)
+  // Plain row / preview-card click: collapse to a single-selection of `id`,
+  // which also becomes the preview focus and the shift-range pivot.
+  const selectSingle = (id: number) => {
+    setSelectedIds(new Set([id]))
+    setPreviewId(id)
+    pivotRef.current = id
+  }
+
+  // Checkbox click: toggle `id` and set the pivot. The preview is left alone so
+  // building a selection never yanks it around.
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+    pivotRef.current = id
+  }
+
+  // Shift-click a checkbox: replace the selection with the inclusive range from
+  // the pivot to `id` (list order). The pivot stays put, so further shift-clicks
+  // re-range from the same anchor. No pivot yet ⇒ behaves like a single toggle.
+  const selectRange = (id: number) => {
+    const pivot = pivotRef.current
+    if (pivot === null) {
+      setSelectedIds(new Set([id]))
+      pivotRef.current = id
+      return
     }
-    setCards(prev => prev.filter(c => c.id !== id))
-    setSongCounter(prev => Math.max(1, prev - 1))
+    const i1 = cards.findIndex(c => c.id === pivot)
+    const i2 = cards.findIndex(c => c.id === id)
+    if (i1 === -1 || i2 === -1) return
+    const [lo, hi] = i1 <= i2 ? [i1, i2] : [i2, i1]
+    setSelectedIds(new Set(cards.slice(lo, hi + 1).map(c => c.id)))
+  }
+
+  // Header checkbox: select everything, or — when everything is already
+  // selected — clear to an empty selection (the preview stays where it is).
+  const toggleSelectAll = () => {
+    setSelectedIds(prev =>
+      cards.length > 0 && prev.size === cards.length
+        ? new Set()
+        : new Set(cards.map(c => c.id)))
+  }
+
+  // Sheet arrows: move the preview focus only; the selection is untouched.
+  const navigatePreview = (id: number) => setPreviewId(id)
+
+  const handleDelete = (id: number) => {
+    // Minus on a selected row removes the whole selection; on a non-selected row
+    // it removes just that one song (the selection stays intact).
+    const deletingSelection = selectedIds.has(id)
+    const toDelete = deletingSelection ? new Set(selectedIds) : new Set<number>([id])
+
+    // The song to fall back to: the remaining song just before the first deleted
+    // one, else the first remaining song after it, else nothing.
+    const firstDelIdx = cards.findIndex(c => toDelete.has(c.id))
+    const remainingBefore = cards.slice(0, firstDelIdx).filter(c => !toDelete.has(c.id)).length
+    const remaining = cards.filter(c => !toDelete.has(c.id))
+    const neighbor = remaining[remainingBefore - 1]?.id ?? remaining[remainingBefore]?.id ?? null
+
+    setCards(prev => prev.filter(c => !toDelete.has(c.id)))
+
+    if (deletingSelection) {
+      // The whole selection is gone; collapse to a single-selection of the
+      // fallback song so there's somewhere to continue from.
+      setSelectedIds(neighbor !== null ? new Set([neighbor]) : new Set())
+      setPreviewId(neighbor)
+      pivotRef.current = neighbor
+    } else {
+      // Only fix up preview/pivot if they pointed at the removed song.
+      if (previewId === id) setPreviewId(neighbor)
+      if (pivotRef.current === id) pivotRef.current = neighbor
+    }
   }
 
   const updateCardField = (id: number, field: 'name' | 'artist' | 'year', value: string) => {
@@ -166,19 +254,15 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     }
   }
 
-  const handleClearSongs = () => {
-    // Mirrors deleting every song one by one: the cards are removed but the
-    // aiDates entries (keyed by track id) are kept, so re-adding a song — or
-    // re-importing a playlist it's in — restores its previous AI year/cost.
-    setCards([])
-    setSelectedId(null)
-    setError(null)
-  }
-
   return {
     cards,
-    selectedId,
-    setSelectedId,
+    selectedIds,
+    previewId,
+    selectSingle,
+    toggleSelect,
+    selectRange,
+    toggleSelectAll,
+    navigatePreview,
     songCounter,
     setSongCounter,
     input,
@@ -194,6 +278,5 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     handleDelete,
     updateCardField,
     handleGeneratePdf,
-    handleClearSongs,
   }
 }

@@ -28,15 +28,20 @@ const ListEmpty = styled.div`
   text-align: center;
 `
 
-const ListItem = styled.div<{ $selected: boolean }>`
+// A row. `$selected` = part of the multi-selection (green, like the preview
+// outline). `$preview` = the single song the preview is focused on; marked with
+// a left accent bar so it's identifiable even when it isn't selected. The bar is
+// always 3px (transparent when off) so rows don't shift between the two states.
+const ListItem = styled.div<{ $selected: boolean; $preview: boolean }>`
   display: flex;
   align-items: center;
   padding: 8px 12px;
   border-bottom: 1px solid #f0f0f0;
+  border-left: 3px solid ${p => p.$preview ? '#0052cc' : 'transparent'};
   cursor: pointer;
-  background: ${p => p.$selected ? '#e8f4ff' : 'white'};
+  background: ${p => p.$selected ? '#e6f7ec' : 'white'};
   font-weight: ${p => p.$selected ? 700 : 400};
-  color: ${p => p.$selected ? '#0052cc' : '#333'};
+  color: ${p => p.$selected ? '#0a7a3c' : '#333'};
   gap: 8px;
   user-select: none;
 
@@ -45,7 +50,7 @@ const ListItem = styled.div<{ $selected: boolean }>`
   }
 
   &:hover {
-    background: ${p => p.$selected ? '#d4ecff' : '#f7f7f7'};
+    background: ${p => p.$selected ? '#d6f0e0' : '#f7f7f7'};
   }
 `
 
@@ -125,6 +130,7 @@ const ListHeader = styled.div`
   user-select: none;
 `
 
+const HeadCheck = styled.span`width: 16px; flex-shrink: 0; display: flex; align-items: center;`
 const HeadNum = styled.span`width: 22px; flex-shrink: 0; text-align: right;`
 const HeadName = styled.span`flex: 1;`
 const HeadArtist = styled.span`width: 160px; flex-shrink: 0;`
@@ -132,9 +138,17 @@ const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
 const HeadAi = styled.span`width: 26px; flex-shrink: 0; text-align: right;`
 const HeadCard = styled.span`width: 54px; flex-shrink: 0; text-align: right;`
 const HeadCost = styled.span`width: 56px; flex-shrink: 0; text-align: right;`
-const HeadSearch = styled.span`width: 28px; flex-shrink: 0;`
 const HeadCopy = styled.span`width: 22px; flex-shrink: 0;`
 const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
+
+// Checkbox shared by the header (select-all) and each row, sized to the column.
+const RowCheckbox = styled.input`
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+`
 
 const CopyBtn = styled.button`
   font-size: 0.75rem;
@@ -156,34 +170,6 @@ const CopyBtn = styled.button`
     background: #e8f4ff;
     border-color: #99c;
     color: #33c;
-  }
-`
-
-const SearchBtn = styled.button`
-  font-size: 0.7rem;
-  width: 22px;
-  height: 22px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  background: white;
-  color: #999;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding: 0;
-  line-height: 1;
-
-  &:hover:not(:disabled) {
-    background: #e8f0ff;
-    border-color: #99c;
-    color: #33c;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
   }
 `
 
@@ -212,47 +198,74 @@ const DeleteBtn = styled.button`
 
 interface SongListProps {
   cards: CardData[]
-  selectedId: number | null
+  // The multi-selection set (green rows) and the single preview-focused song.
+  selectedIds: Set<number>
+  previewId: number | null
   // Undefined when the AI-dates feature is disabled; its presence drives the
-  // extra year/cost columns and the per-row web-search button (see useAiDates).
+  // extra year/cost columns (see useAiDates).
   ai?: AiState
-  onSelect: (id: number) => void
+  // Plain row click → single-select. Checkbox → toggle; shift-checkbox → range;
+  // header checkbox → select-all / clear.
+  onSelectSingle: (id: number) => void
+  onToggle: (id: number) => void
+  onRange: (id: number) => void
+  onToggleAll: () => void
   onApplyYear: (id: number, year: string) => void
   onDelete: (id: number) => void
 }
 
 export function SongList({
   cards,
-  selectedId,
+  selectedIds,
+  previewId,
   ai,
-  onSelect,
+  onSelectSingle,
+  onToggle,
+  onRange,
+  onToggleAll,
   onApplyYear,
   onDelete,
 }: SongListProps) {
   // Maps each card id to its <ListItem> DOM node, so we can scroll the
-  // selected song into view in the list whenever the selection changes.
+  // preview-focused song into view in the list whenever it changes.
   const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
-  // Whenever the selected song changes, make sure its row is visible in the
+  // Whenever the preview focus changes, make sure its row is visible in the
   // list. Covers adding a song, clicking a preview card, and the sheet arrows.
   useEffect(() => {
-    if (selectedId === null) return
-    const node = listItemRefs.current.get(selectedId)
+    if (previewId === null) return
+    const node = listItemRefs.current.get(previewId)
     node?.scrollIntoView({ block: 'nearest' })
-  }, [selectedId])
+  }, [previewId])
+
+  // Header checkbox: checked when every song is selected, indeterminate when only
+  // some are. (The DOM `indeterminate` flag isn't settable in JSX — set via ref.)
+  const allSelected = cards.length > 0 && selectedIds.size === cards.length
 
   return (
     <ListPanel className='list_panel'>
-      {ai && cards.length > 0 && (
+      {cards.length > 0 && (
         <ListHeader>
+          <HeadCheck>
+            <RowCheckbox
+              type="checkbox"
+              checked={allSelected}
+              ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && !allSelected }}
+              onChange={onToggleAll}
+              title="Select all / clear selection"
+            />
+          </HeadCheck>
           <HeadNum>#</HeadNum>
           <HeadName>Song</HeadName>
           <HeadArtist>Artist</HeadArtist>
-          <HeadSpotify>Spotify</HeadSpotify>
-          <HeadAi>AI</HeadAi>
-          <HeadCard>Card</HeadCard>
-          <HeadCost>cents</HeadCost>
-          <HeadSearch />
+          {ai && (
+            <>
+              <HeadSpotify>Spotify</HeadSpotify>
+              <HeadAi>AI</HeadAi>
+              <HeadCard>Card</HeadCard>
+              <HeadCost>cents</HeadCost>
+            </>
+          )}
           <HeadCopy />
           <HeadDelete />
         </ListHeader>
@@ -262,6 +275,7 @@ export function SongList({
           ? <ListEmpty>No songs yet — paste a Spotify URL above and press Add</ListEmpty>
           : cards.map((card, idx) => {
             const aiDate = ai ? ai.aiDates.get(trackIdOf(card)) : undefined
+            const querying = !!ai && ai.webSearchingId === trackIdOf(card)
             const aiError = typeof aiDate?.year === 'string'
             const spotifyMatch = card.spotifyYear === card.trackInfo.year.trim()
             const aiMatch = !!aiDate && !aiError &&
@@ -273,9 +287,23 @@ export function SongList({
                 if (node) listItemRefs.current.set(card.id, node)
                 else listItemRefs.current.delete(card.id)
               }}
-              $selected={card.id === selectedId}
-              onClick={() => onSelect(card.id)}
+              $selected={selectedIds.has(card.id)}
+              $preview={card.id === previewId}
+              onClick={() => onSelectSingle(card.id)}
             >
+              <RowCheckbox
+                type="checkbox"
+                checked={selectedIds.has(card.id)}
+                // Shift toggles a range from the pivot; a plain click toggles
+                // just this row. stopPropagation keeps the row's single-select
+                // from firing. onChange is a no-op (the click handler owns it).
+                onClick={e => {
+                  e.stopPropagation()
+                  if (e.shiftKey) onRange(card.id)
+                  else onToggle(card.id)
+                }}
+                onChange={() => {}}
+              />
               <ListItemNum>{idx + 1}</ListItemNum>
               <ListItemName>{card.trackInfo.name}</ListItemName>
               <ListItemArtist>{card.trackInfo.artist}</ListItemArtist>
@@ -292,12 +320,12 @@ export function SongList({
                   </ListItemYearSource>
                   <ListItemYearSource
                     $match={aiDate ? aiMatch : null}
-                    $clickable={!!aiDate && !aiError && !aiMatch}
-                    onClick={aiDate && !aiError && !aiMatch ? () => {
+                    $clickable={!querying && !!aiDate && !aiError && !aiMatch}
+                    onClick={!querying && aiDate && !aiError && !aiMatch ? () => {
                       onApplyYear(card.id, String(aiDate.year))
                     } : undefined}
                   >
-                    {aiDate ? aiDate.year : '----'}
+                    {querying ? '…' : aiDate ? aiDate.year : '----'}
                   </ListItemYearSource>
                   <ListItemCard>{card.trackInfo.year}</ListItemCard>
                   <ListItemCost>
@@ -315,17 +343,6 @@ export function SongList({
                 >
                 ⧉
               </CopyBtn>
-              {ai && ai.webSearchEnabled && (
-                <SearchBtn
-                  title="Web search for release year"
-                  disabled={ai.webSearchingId === trackIdOf(card)}
-                  onClick={() => {
-                    ai.onWebSearch(card)
-                  }}
-                >
-                  {ai.webSearchingId === trackIdOf(card) ? '…' : '🔍'}
-                </SearchBtn>
-              )}
               <DeleteBtn
                 title="Remove"
                 onClick={e => { e.stopPropagation(); onDelete(card.id) }}

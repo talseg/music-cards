@@ -132,6 +132,21 @@ const ListHeader = styled.div`
 
 const HeadCheck = styled.span`width: 16px; flex-shrink: 0; display: flex; align-items: center;`
 const HeadNum = styled.span`width: 22px; flex-shrink: 0; text-align: right;`
+
+// Header select-all hit-zone: the counterpart to the rows' CheckZone. Wraps the
+// header checkbox AND the '#' label and stretches to fill the header's full
+// height (the negative margins cancel ListHeader's 6px vertical and 12px left
+// padding) so clicking anywhere over them toggles select-all, with the same copy
+// cursor as a row's select zone.
+const HeadCheckZone = styled.div`
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 8px;
+  margin: -6px 0 -6px -12px;
+  padding: 0 0 0 12px;
+  cursor: copy;
+`
 const HeadName = styled.span`flex: 1;`
 const HeadArtist = styled.span`width: 160px; flex-shrink: 0;`
 const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
@@ -262,16 +277,17 @@ export function SongList({
     <ListPanel className='list_panel'>
       {cards.length > 0 && (
         <ListHeader>
-          <HeadCheck>
-            <RowCheckbox
-              type="checkbox"
-              checked={allSelected}
-              ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && !allSelected }}
-              onChange={onToggleAll}
-              title="Select all / clear selection"
-            />
-          </HeadCheck>
-          <HeadNum>#</HeadNum>
+          <HeadCheckZone onClick={onToggleAll} title="Select all / clear selection">
+            <HeadCheck>
+              <RowCheckbox
+                type="checkbox"
+                checked={allSelected}
+                ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && !allSelected }}
+                onChange={() => {}}
+              />
+            </HeadCheck>
+            <HeadNum>#</HeadNum>
+          </HeadCheckZone>
           <HeadName>Song</HeadName>
           <HeadArtist>Artist</HeadArtist>
           {ai && (

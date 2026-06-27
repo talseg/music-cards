@@ -7,7 +7,7 @@ import { generatePdf } from '../pdfGenerator'
 import { sdk } from '../auth/useAuth'
 import { fetchPlaylistTracks, fetchLikedTracks } from '../spotify/spotify-user'
 import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
-import { DELETE_STAGGER_MS } from '../common/constants'
+import { STAGGER_MS } from '../common/constants'
 
 // App-data localStorage key. Deliberately lives OUTSIDE the 'music-cards:' auth
 // namespace: clearStoredAuth() (on logout, and on the expired/stale-token paths
@@ -140,10 +140,17 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
         return
       }
 
-      setCards(prev => [...prev, ...newCards])
-      // Show the first import in the preview, but don't select it — imports
-      // (including the very first on startup) start with nothing selected.
-      setPreviewId(newCards[0].id)
+      // Append the new rows one at a time, top first (STAGGER_MS apart), so the
+      // bunch appears gradually instead of popping in all at once — mirroring how
+      // handleDelete removes a selection. Each appended card also becomes the
+      // preview focus, so the list scrolls to follow the last added song (imports
+      // start with nothing selected — only the preview moves).
+      newCards.forEach((card, i) => {
+        setTimeout(() => {
+          setCards(prev => [...prev, card])
+          setPreviewId(card.id)
+        }, i * STAGGER_MS)
+      })
       setInput('')
       if (link.kind === 'track') {
         setSongCounter(prev => prev + 1)
@@ -232,13 +239,13 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     // and vanish.
     const orderedIds = cards.filter(c => toDelete.has(c.id)).map(c => c.id)
     orderedIds.forEach((delId, i) => {
-      setTimeout(() => setCards(prev => prev.filter(c => c.id !== delId)), i * DELETE_STAGGER_MS)
+      setTimeout(() => setCards(prev => prev.filter(c => c.id !== delId)), i * STAGGER_MS)
     })
 
     // Nothing stays selected after a delete: clear the selection once the last
     // green row has gone.
     if (deletingSelection) {
-      setTimeout(() => setSelectedIds(new Set()), orderedIds.length * DELETE_STAGGER_MS)
+      setTimeout(() => setSelectedIds(new Set()), orderedIds.length * STAGGER_MS)
     }
   }
 

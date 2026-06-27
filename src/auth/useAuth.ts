@@ -49,9 +49,17 @@ function toAuthState(result: InitAuthResult): AuthState {
   }
 }
 
+// The login feature exposed to the app. The return shape of useAuth.
+export interface AuthInterface {
+  auth: AuthState
+  loggedIn: boolean
+  login: () => void
+  logout: () => void
+}
+
 // Owns the (non-blocking) Spotify login feature: auth phase, the mount-time
 // OAuth-callback / stored-token validation, and login/logout actions.
-export function useAuth() {
+export function useAuth(): AuthInterface {
   const [auth, setAuth] = useState<AuthState>({ kind: 'checking' })
 
   // On mount: handle the OAuth callback, or silently validate a stored token.

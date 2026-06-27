@@ -177,7 +177,6 @@ export function ControlBar({
   // The songs the AI glass acts on. Computed here (not stored) so it always
   // matches the current selection and card list.
   const selectedCards = cards.filter(c => selectedIds.has(c.id))
-  const aiRunning = ai?.aiStatus === 'running' || ai?.aiStatus === 'pausing'
   // Free-text mirror of totalCost while the field is focused, so typing (incl.
   // intermediate states like "0.") isn't fought by the numeric value.
   const [totalCostInput, setTotalCostInput] = useState<string | null>(null)
@@ -203,21 +202,21 @@ export function ControlBar({
       {ai && (
         <>
           <Button
-            onClick={() => ai.onRunSelected(selectedCards)}
-            // The glass (re-)queries the selected songs. Disabled with nothing
-            // selected or while a run is in flight (use Pause/Resume for that).
-            disabled={selectedCards.length === 0 || aiRunning}
-            title="Get AI dates for the selected songs"
+            // One control whose icon shows the state: 🔍 idle ⇒ (re-)query the
+            // selected songs; ⏸ running ⇒ pause; ▶ paused ⇒ resume. Disabled
+            // mid-pause, or when idle with no selection.
+            onClick={() => ai.aiStatus === 'idle' ? ai.onRunSelected(selectedCards) : ai.onPauseResume()}
+            disabled={ai.aiStatus === 'pausing' || (ai.aiStatus === 'idle' && selectedCards.length === 0)}
+            title={
+              ai.aiStatus === 'running' ? 'Pause the AI run'
+                : ai.aiStatus === 'pausing' ? 'Pausing…'
+                  : ai.aiStatus === 'paused' ? 'Resume the AI run'
+                    : 'Get AI dates for the selected songs'
+            }
           >
-            🔍
-          </Button>
-          <Button
-            onClick={ai.onPauseResume}
-            // Only live while a run is in flight: Pause it, or Resume a paused one.
-            disabled={ai.aiStatus === 'idle' || ai.aiStatus === 'pausing'}
-            title="Pause / resume the AI run"
-          >
-            {ai.aiStatus === 'pausing' ? 'Pausing…' : ai.aiStatus === 'paused' ? 'Resume' : 'Pause'}
+            {ai.aiStatus === 'running' || ai.aiStatus === 'pausing'
+              ? '⏸'
+              : ai.aiStatus === 'paused' ? '▶' : '🔍'}
           </Button>
           <ToggleLabel title={ai.webSearchEnabled ? 'Disable web search' : 'Enable web search (≈0.5¢ per query)'}>
             Web search

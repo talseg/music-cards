@@ -7,6 +7,7 @@ import { generatePdf } from '../pdfGenerator'
 import { sdk } from '../auth/useAuth'
 import { fetchPlaylistTracks, fetchLikedTracks } from '../spotify/spotify-user'
 import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
+import { DELETE_STAGGER_MS } from '../common/constants'
 
 // App-data localStorage key. Deliberately lives OUTSIDE the 'music-cards:' auth
 // namespace: clearStoredAuth() (on logout, and on the expired/stale-token paths
@@ -138,7 +139,9 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
       }
 
       setCards(prev => [...prev, ...newCards])
-      selectSingle(newCards[0].id)
+      // Show the first import in the preview, but don't select it — imports
+      // (including the very first on startup) start with nothing selected.
+      setPreviewId(newCards[0].id)
       setInput('')
       if (link.kind === 'track') {
         setSongCounter(prev => prev + 1)
@@ -200,23 +203,29 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     const deletingSelection = selectedIds.has(id)
     const toDelete = deletingSelection ? new Set(selectedIds) : new Set<number>([id])
 
-    // The song to fall back to: the remaining song just before the first deleted
-    // one, else the first remaining song after it, else nothing.
+    // The song the preview falls back to when the focused one is deleted: the
+    // remaining song just before the first deleted one, else the first after it.
     const firstDelIdx = cards.findIndex(c => toDelete.has(c.id))
     const remainingBefore = cards.slice(0, firstDelIdx).filter(c => !toDelete.has(c.id)).length
     const remaining = cards.filter(c => !toDelete.has(c.id))
     const neighbor = remaining[remainingBefore - 1]?.id ?? remaining[remainingBefore]?.id ?? null
 
-    setCards(prev => prev.filter(c => !toDelete.has(c.id)))
+    // Keep the preview from blanking out: move it to the survivor only when the
+    // focused song is itself being removed.
+    if (previewId !== null && toDelete.has(previewId)) setPreviewId(neighbor)
 
+    // Remove the rows one at a time, top first (DELETE_STAGGER_MS apart). The rows
+    // stay selected (green) as they go, so the user watches the selection shrink
+    // and vanish.
+    const orderedIds = cards.filter(c => toDelete.has(c.id)).map(c => c.id)
+    orderedIds.forEach((delId, i) => {
+      setTimeout(() => setCards(prev => prev.filter(c => c.id !== delId)), i * DELETE_STAGGER_MS)
+    })
+
+    // Nothing stays selected after a delete: clear the selection once the last
+    // green row has gone.
     if (deletingSelection) {
-      // The whole selection is gone; collapse to a single-selection of the
-      // fallback song so there's somewhere to continue from.
-      setSelectedIds(neighbor !== null ? new Set([neighbor]) : new Set())
-      setPreviewId(neighbor)
-    } else if (previewId === id) {
-      // Deleted a non-selected row; only move the current song if it was that row.
-      setPreviewId(neighbor)
+      setTimeout(() => setSelectedIds(new Set()), orderedIds.length * DELETE_STAGGER_MS)
     }
   }
 

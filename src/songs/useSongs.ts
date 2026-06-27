@@ -22,7 +22,8 @@ const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
 //   previewId    - the single "current song": what the preview pages to and the
 //                  blue list marker. Moves on any row / preview-card / checkbox
 //                  click; survives an empty selection (unselect-all leaves it put).
-//   shift anchor - NOT stored: it's the topmost selected song, derived from the set.
+//   shift anchor - NOT stored: it's the nearest selected song to the click
+//                  (above if any, else below), derived from the set.
 export interface SongsInterface {
   cards: CardData[]
   selectedIds: Set<number>
@@ -31,8 +32,9 @@ export interface SongsInterface {
   selectSingle: (id: number) => void
   // Checkbox click: toggle `id` in/out of the selection; makes it the current song.
   toggleSelect: (id: number) => void
-  // Shift-click a checkbox: ADD the block from the topmost selected song to `id`
-  // (just `id` when nothing is selected). Only ever grows the selection.
+  // Shift-click a checkbox: ADD the block bridging `id` to the nearest selected
+  // song (the one above if any, else the one below). Just `id` when nothing is
+  // selected. Only ever grows the selection.
   selectRange: (id: number) => void
   // Header checkbox: anything selected ⇒ clear; only an empty selection selects all.
   toggleSelectAll: () => void
@@ -174,15 +176,26 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
   }
 
   // Shift-click a checkbox: only ever ADDS. With nothing selected it just selects
-  // `id`. Otherwise it unions a contiguous block from the topmost selected song
-  // (the first selected card in list order — the derived anchor) through `id`.
+  // `id`. Otherwise it unions a contiguous block bridging `id` to the nearest
+  // selected song — the closest one above the click (the derived anchor), falling
+  // back to the closest one below when none is above.
   const selectRange = (id: number) => {
     setSelectedIds(prev => {
       if (prev.size === 0) return new Set([id])
-      const topIdx = cards.findIndex(c => prev.has(c.id))
       const clickIdx = cards.findIndex(c => c.id === id)
-      if (topIdx === -1 || clickIdx === -1) return prev
-      const span = cards.slice(Math.min(topIdx, clickIdx), Math.max(topIdx, clickIdx) + 1)
+      if (clickIdx === -1) return prev
+      // Nearest selected above the click; else nearest selected below.
+      let anchorIdx = -1
+      for (let i = clickIdx - 1; i >= 0; i--) {
+        if (prev.has(cards[i].id)) { anchorIdx = i; break }
+      }
+      if (anchorIdx === -1) {
+        for (let i = clickIdx + 1; i < cards.length; i++) {
+          if (prev.has(cards[i].id)) { anchorIdx = i; break }
+        }
+      }
+      if (anchorIdx === -1) return new Set([...prev, id])
+      const span = cards.slice(Math.min(anchorIdx, clickIdx), Math.max(anchorIdx, clickIdx) + 1)
       return new Set([...prev, ...span.map(c => c.id)])
     })
     setPreviewId(id)

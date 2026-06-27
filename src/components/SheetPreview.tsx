@@ -6,7 +6,7 @@ import { CARD_RADIUS_PX, CARD_WIDTH_PX, SongCard } from './SongCard'
 // ─── Styled Components ────────────────────────────────────────────────────────
 
 const PreviewSection = styled.div`
-  margin-top: 28px;
+  margin-top: 16px;
 `
 
 const SheetRow = styled.div`

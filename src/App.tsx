@@ -77,14 +77,15 @@ function App() {
           onApplyYear={(id, year) => updateCardField(id, 'year', year)}
           onDelete={handleDelete}
         />
-      </ItemsContainer>
 
-      <SheetPreview
-        cards={cards}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-        onFieldChange={updateCardField}
-      />
+        <SheetPreview
+          cards={cards}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onFieldChange={updateCardField}
+        />
+        
+      </ItemsContainer>
 
       {/* Hidden onfirmation dialog */}
       <WebSearchConfirmModal ai={ai} />

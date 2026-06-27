@@ -69,6 +69,22 @@ const CardPairWrapper = styled.div<{ $selected: boolean; $clickable?: boolean }>
   }
 `
 
+// One column of the sheet: the card pair stacked above its list-position label.
+const CardCell = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+`
+
+// The card's 1-based place in the list, shown under the card pair. Lives here in
+// the preview only — it's outside the data-pdf-* capture targets, so it never
+// prints. Font matches the song-number column in the list (SongList ListItemNum).
+const CardPosition = styled.div`
+  font-size: 0.75rem;
+  color: #aaa;
+`
+
 // Empty slot that pads a partial sheet in the preview. A single dashed rectangle
 // (no height set) that stretches to the row's height via CardGrid's flex layout,
 // so it spans a full card pair with rounded outer corners and no middle seam.
@@ -108,6 +124,9 @@ export function SheetPreview({ cards, selectedIds, previewId, onSelect, onNaviga
   const previewIndex = previewCard ? cards.findIndex(c => c.id === previewId) : -1
   const previewSheetIndex = previewIndex >= 0 ? Math.ceil((previewIndex + 1) / CARDS_PER_SHEET) : null
   const totalSheets = Math.ceil(cards.length / CARDS_PER_SHEET)
+
+  // Each card's 1-based place in the list, shown under the card pair in the preview.
+  const positionById = new Map(cards.map((c, i) => [c.id, i + 1]))
 
   // Cards on the sheet containing the preview-focused card (always layout mode)
   const sheetCards: (CardData | null)[] = previewSheetIndex !== null
@@ -152,18 +171,20 @@ export function SheetPreview({ cards, selectedIds, previewId, onSelect, onNaviga
               {sheetCards.map((card, i) =>
                 card
                   ? (
-                    <CardPairWrapper
-                      key={`pair-${card.id}`}
-                      $selected={selectedIds.has(card.id)}
-                      $clickable
-                      onClick={() => onSelect(card.id)}
-                    >
-                      <SongCard
-                        editable
-                        card={card}
-                        onFieldChange={(field, value) => onFieldChange(card.id, field, value)}
-                      />
-                    </CardPairWrapper>
+                    <CardCell key={`cell-${card.id}`}>
+                      <CardPairWrapper
+                        $selected={selectedIds.has(card.id)}
+                        $clickable
+                        onClick={() => onSelect(card.id)}
+                      >
+                        <SongCard
+                          editable
+                          card={card}
+                          onFieldChange={(field, value) => onFieldChange(card.id, field, value)}
+                        />
+                      </CardPairWrapper>
+                      <CardPosition>{positionById.get(card.id)}</CardPosition>
+                    </CardCell>
                   )
                   : <SheetSlotPlaceholder key={`ph-${i}`} />
               )}

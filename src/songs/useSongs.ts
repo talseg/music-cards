@@ -5,7 +5,7 @@ import type { ImportedTrack } from '../spotify/spotify'
 import type { CardData } from '../common/types'
 import { generatePdf } from '../pdfGenerator'
 import { sdk } from '../auth/useAuth'
-import { fetchPlaylistTracks } from '../spotify/spotify-user'
+import { fetchPlaylistTracks, fetchLikedTracks } from '../spotify/spotify-user'
 import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
 
 // App-data localStorage key. Deliberately lives OUTSIDE the 'music-cards:' auth
@@ -71,18 +71,14 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
       : ''
 
   // Fetch tracks for the pasted link and add the new ones to the list. The import
-  // type is inferred from the link; track & playlist are supported, album & liked
-  // are recognized but not yet implemented.
+  // type is inferred from the link: track, album, playlist, and liked songs are
+  // all supported.
   const handleImport = async () => {
     if (!link) {
       setError('Unrecognized Spotify link. Paste a track, album, or playlist URL.')
       return
     }
     if (LINK_NEEDS_LOGIN[link.kind] && !loggedIn) return
-    if (link.kind === 'liked') {
-      setError('Liked songs import is coming soon.')
-      return
-    }
 
     setImporting(true)
     setError(null)
@@ -94,8 +90,10 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
         tracks = [{ trackId: link.id!, trackInfo }]
       } else if (link.kind === 'album') {
         tracks = await fetchAlbumTracks(link.id!)
-      } else {
+      } else if (link.kind === 'playlist') {
         tracks = await fetchPlaylistTracks(sdk, link.id!)
+      } else {
+        tracks = await fetchLikedTracks(sdk)
       }
 
       const existing = new Set(cards.map(c => c.spotifyUri.split(':').pop() || ''))

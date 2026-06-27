@@ -75,3 +75,66 @@ export async function fetchPlaylistTracks(
 
   return results
 }
+
+// Fetch all of the logged-in user's Liked Songs, following pagination. Requires a
+// logged-in SDK instance with the user-library-read scope. The saved-tracks
+// endpoint caps `limit` at 50, and wraps each track as { added_at, track }.
+export async function fetchLikedTracks(
+  sdk: SpotifyApi,
+): Promise<ImportedTrack[]> {
+  const tokenObj = await sdk.getAccessToken()
+  const token = tokenObj?.access_token
+  if (!token) throw new Error('Not logged in')
+
+  const results: ImportedTrack[] = []
+  const limit = 50
+  let offset = 0
+
+  for (;;) {
+    const url =
+      `https://api.spotify.com/v1/me/tracks` +
+      `?limit=${limit}&offset=${offset}`
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!res.ok) {
+      if (res.status === 403) {
+        throw new Error("Can't access your liked songs — log out and log back in to grant access.")
+      }
+      throw new Error(`Spotify liked songs fetch failed: ${res.status}`)
+    }
+
+    const data = await res.json()
+    const items: unknown[] = data.items ?? []
+
+    for (const entry of items) {
+      const t = (entry as { track?: unknown }).track as {
+        id: string | null
+        name: string
+        type?: string
+        artists: { name: string }[]
+        album: { release_date: string }
+      } | null
+
+      if (!t || !t.id) continue
+      if (t.type && t.type !== 'track') continue
+
+      results.push({
+        trackId: t.id,
+        trackInfo: {
+          name: t.name,
+          artist: Array.isArray(t.artists) ? t.artists.map(a => a.name).join(', ') : '',
+          year: t.album?.release_date ? t.album.release_date.substring(0, 4) : '',
+        },
+      })
+    }
+
+    const total: number = data.total ?? items.length
+    offset += limit
+    if (offset >= total || items.length === 0) break
+  }
+
+  return results
+}

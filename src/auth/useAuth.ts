@@ -9,7 +9,7 @@ import { createAuth, type InitAuthResult } from './spotify-auth'
 // scopes the separate player app uses.
 const auth_ = createAuth({
   clientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID as string,
-  scopes: ['playlist-read-private', 'playlist-read-collaborative'],
+  scopes: ['playlist-read-private', 'playlist-read-collaborative', 'user-library-read'],
   cachePrefix: 'music-cards:',
 })
 

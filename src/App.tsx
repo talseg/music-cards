@@ -1,8 +1,8 @@
 import { SongList } from './components/SongList'
 import { SheetPreview } from './components/SheetPreview'
 import { ControlBar } from './components/ControlBar'
+import { SongInput } from './components/SongInput'
 import { WebSearchConfirmModal } from './components/WebSearchConfirmModal'
-import { Button } from './common/shared.styles'
 import { useAuth, getRedirectUri } from './auth/useAuth'
 import { useAiDates } from './ai/useAiDates'
 import { useSongs } from './songs/useSongs'
@@ -25,40 +25,6 @@ const TopPanel = styled.div`
   max-width: 1000px;
 `
 
-const InputRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`
-
-const FieldLabel = styled.label`
-  font-size: 0.85rem;
-  color: #555;
-  white-space: nowrap;
-  width: 110px;
-  flex-shrink: 0;
-`
-
-const Input = styled.input`
-  font-size: 0.95rem;
-  padding: 8px 12px;
-  flex: 1;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: white;
-  outline: none;
-
-  &:focus {
-    border-color: #888;
-  }
-`
-
-const ErrorText = styled.div`
-  color: #cc0000;
-  font-size: 0.85rem;
-  margin-top: 2px;
-`
-
 // ─── Auth error ───────────────────────────────────────────────────────────────
 
 const AuthError = styled.div`
@@ -66,15 +32,6 @@ const AuthError = styled.div`
   font-size: 0.82rem;
   white-space: pre-wrap;
   max-width: 680px;
-`
-
-// Wrapper that still receives hover events when the controls inside are
-// disabled, so the "must be logged in" tooltip actually appears.
-const DisabledHint = styled.span`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
 `
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -86,15 +43,7 @@ function App() {
     cards,
     selectedId,
     setSelectedId,
-    input,
-    setInput,
-    importing,
-    importDisabled,
-    importDisabledReason,
-    error,
     clearError,
-    inputRef,
-    handleImport,
     handleDelete,
     updateCardField,
   } = songsInterface
@@ -132,28 +81,7 @@ function App() {
           </AuthError>
         )}
 
-        {/* Combined import row: type inferred from the pasted link */}
-        <InputRow>
-          <FieldLabel htmlFor="spotify-link">Add / Import</FieldLabel>
-          <DisabledHint title={importDisabledReason}>
-            <Input
-              id="spotify-link"
-              ref={inputRef}
-              type="text"
-              autoComplete="off"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleImport() }}
-              placeholder="Paste a Spotify track, album, or playlist link…"
-              disabled={importing}
-            />
-            <Button $primary onClick={handleImport} disabled={importDisabled}>
-              {importing ? 'Adding…' : 'Add'}
-            </Button>
-          </DisabledHint>
-        </InputRow>
-
-        {error && <ErrorText>{error}</ErrorText>}
+        <SongInput songs={songsInterface} />
 
         {/* Song list */}
         <SongList

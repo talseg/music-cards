@@ -17,7 +17,7 @@ import promptTemplate from '../assets/perplexityPrompt.txt?raw'
 const MODEL = 'google/gemini-3.1-flash-lite'
 //const MODEL = `openai/gpt-5.1`;
 
-const DEBUG_MODEL_ANSWER = true;
+const DEBUG_MODEL_ANSWER = false;
 
 export interface SuggestedYearResult {
   year: 'Error' | 'Unknown' | number

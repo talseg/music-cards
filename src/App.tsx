@@ -2,8 +2,9 @@ import { SongList } from './components/SongList'
 import { SheetPreview } from './components/SheetPreview'
 import { ControlBar } from './components/ControlBar'
 import { SongInput } from './components/SongInput'
+import { RedirectUriHint } from './components/RedirectUriHint'
 import { WebSearchConfirmModal } from './components/WebSearchConfirmModal'
-import { useAuth, getRedirectUri } from './auth/useAuth'
+import { useAuth } from './auth/useAuth'
 import { useAiDates } from './ai/useAiDates'
 import { useSongs } from './songs/useSongs'
 import styled from 'styled-components'
@@ -63,23 +64,7 @@ function App() {
 
       <TopPanel>
         {/* Redirect URI hint when logged out */}
-        {auth.kind === 'out' && (
-          <AuthError style={{ margin: 0, fontSize: '0.78rem', color: '#aaa' }}>
-            Make sure{' '}
-            <span style={{ fontFamily: 'monospace', color: '#888' }}>
-              {getRedirectUri()}
-            </span>{' '}
-            is added in your{' '}
-            <a
-              href="https://developer.spotify.com/dashboard"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: '#0052cc' }}
-            >
-              Spotify Developer Dashboard
-            </a>
-          </AuthError>
-        )}
+        {auth.kind === 'out' && <RedirectUriHint />}
 
         <SongInput songs={songsInterface} />
 

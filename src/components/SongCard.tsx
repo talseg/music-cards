@@ -113,6 +113,10 @@ export function SongCard({ card, editable, onFieldChange }: SongCardProps) {
       ? {
           contentEditable: true,
           suppressContentEditableWarning: true,
+          // Enter accepts the edit: prevent the newline and blur to commit.
+          onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+            if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+          },
           onBlur: (e: React.FocusEvent<HTMLDivElement>) =>
             onFieldChange?.(field, e.currentTarget.textContent ?? ''),
         }

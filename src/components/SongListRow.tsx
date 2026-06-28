@@ -26,19 +26,6 @@ const editableCell = css<{ $editing?: boolean }>`
   `}
 `
 
-// Editable cells whose resting display is a narrow fixed-width, right-aligned
-// box (the year columns). While editing, the fixed width leaves the outline
-// floating away from the right-aligned text, so size the box to its content
-// instead. Composed after editableCell so it wins in the editing state.
-const editableYearCell = css<{ $editing?: boolean }>`
-  ${editableCell}
-  ${p => p.$editing && css`
-    width: auto;
-    min-width: 28px;
-    text-align: center;
-  `}
-`
-
 // ─── Song List Row ──────────────────────────────────────────────────────────────
 
 // A row. `$selected` = part of the multi-selection (green, like the preview
@@ -104,7 +91,7 @@ const ListItemYear = styled.span<{ $editing?: boolean }>`
   flex-shrink: 0;
   width: 36px;
   text-align: right;
-  ${editableYearCell}
+  ${editableCell}
 `
 
 const ListItemYearSource = styled.span<{ $match: boolean | null; $clickable: boolean }>`
@@ -123,7 +110,7 @@ const ListItemCard = styled.span<{ $editing?: boolean }>`
   flex-shrink: 0;
   width: 44px;
   text-align: right;
-  ${editableYearCell}
+  ${editableCell}
 `
 
 const ListItemCost = styled.span`

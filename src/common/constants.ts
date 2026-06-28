@@ -11,3 +11,5 @@ export const CARDS_PER_SHEET = 4
 // or disappear gradually instead of all at once (which is jarring and loses the
 // user's place).
 export const STAGGER_MS = 40
+
+export const DISPLAY_LONG_LIST = true;

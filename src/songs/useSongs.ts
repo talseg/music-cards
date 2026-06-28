@@ -1,13 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Dispatch, SetStateAction, RefObject } from 'react'
-import { fetchTrackInfo, fetchAlbumTracks } from '../spotify/spotify'
-import type { ImportedTrack } from '../spotify/spotify'
 import type { CardData } from '../common/types'
 import { generatePdf } from '../pdfGenerator'
-import { sdk } from '../auth/useAuth'
-import { fetchPlaylistTracks, fetchLikedTracks } from '../spotify/spotify-user'
-import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
 import { STAGGER_MS } from '../common/constants'
+import { useSpotifyImport } from './useSpotifyImport'
 
 // App-data localStorage key. Deliberately lives OUTSIDE the 'music-cards:' auth
 // namespace: clearStoredAuth() (on logout, and on the expired/stale-token paths
@@ -62,8 +58,6 @@ export interface SongsInterface {
 // PDF export). Mirrors useAuth / useAiDates — App just consumes what it returns.
 // `loggedIn` comes from useAuth and gates the playlist-import feature.
 export function useSongs(loggedIn: boolean) : SongsInterface {
-  const [input, setInput] = useState('')
-  const [importing, setImporting] = useState(false)
   const [cards, setCards] = useState<CardData[]>([])
   // Multi-selection (green / operated-on); may be empty.
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -77,8 +71,7 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     return stored && Number.isFinite(parsed) && parsed >= 1 ? parsed : 1
   })
   const [pdfLoading, setPdfLoading] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const nextId = useRef(1)
+  const nextIdRef = useRef(1)
 
   const clearError = () => setError(null)
 
@@ -86,82 +79,27 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     localStorage.setItem(SONG_COUNTER_KEY, String(songCounter))
   }, [songCounter])
 
-  const link = parseSpotifyLink(input)
-  const importDisabled =
-    importing || !input.trim() || (link !== null && LINK_NEEDS_LOGIN[link.kind] && !loggedIn)
-  const importDisabledReason =
-    link !== null && LINK_NEEDS_LOGIN[link.kind] && !loggedIn
-      ? 'Must be logged in to import this link'
-      : ''
-
-  // Fetch tracks for the pasted link and add the new ones to the list. The import
-  // type is inferred from the link: track, album, playlist, and liked songs are
-  // all supported.
-  const handleImport = async () => {
-    if (!link) {
-      setError('Unrecognized Spotify link. Paste a track, album, or playlist URL.')
-      return
-    }
-    if (LINK_NEEDS_LOGIN[link.kind] && !loggedIn) return
-
-    setImporting(true)
-    setError(null)
-
-    try {
-      let tracks: ImportedTrack[]
-      if (link.kind === 'track') {
-        const trackInfo = await fetchTrackInfo(link.id!)
-        tracks = [{ trackId: link.id!, trackInfo }]
-      } else if (link.kind === 'album') {
-        tracks = await fetchAlbumTracks(link.id!)
-      } else if (link.kind === 'playlist') {
-        tracks = await fetchPlaylistTracks(sdk, link.id!)
-      } else {
-        tracks = await fetchLikedTracks(sdk)
-      }
-
-      const existing = new Set(cards.map(c => c.spotifyUri.split(':').pop() || ''))
-      const newCards: CardData[] = []
-      for (const t of tracks) {
-        if (existing.has(t.trackId)) continue
-        existing.add(t.trackId)
-        newCards.push({
-          id: nextId.current++,
-          spotifyUri: `spotify:track:${t.trackId}`,
-          spotifyYear: t.trackInfo.year,
-          trackInfo: t.trackInfo,
-        })
-      }
-
-      if (newCards.length === 0) {
-        setError(link.kind === 'track'
-          ? 'That song is already in the list.'
-          : 'No new songs to add (all tracks are already in the list).')
-        return
-      }
-
-      // Append the new rows one at a time, top first (STAGGER_MS apart), so the
-      // bunch appears gradually instead of popping in all at once — mirroring how
-      // handleDelete removes a selection. Each appended card also becomes the
-      // preview focus, so the list scrolls to follow the last added song (imports
-      // start with nothing selected — only the preview moves).
-      newCards.forEach((card, i) => {
-        setTimeout(() => {
-          setCards(prev => [...prev, card])
-          setPreviewId(card.id)
-        }, i * STAGGER_MS)
-      })
-      setInput('')
-      if (link.kind === 'track') {
-        setSongCounter(prev => prev + 1)
-        inputRef.current?.focus()
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to import')
-    } finally {
-      setImporting(false)
-    }
-  }
+  // The Spotify-import slice (paste input, in-flight flag, disabled gating,
+  // handleImport). It commits successful imports straight into this hook's state
+  // via the setters passed below, so the append / preview-follow / counter
+  // behavior is unchanged.
+  const {
+    input,
+    setInput,
+    importing,
+    importDisabled,
+    importDisabledReason,
+    inputRef,
+    handleImport,
+  } = useSpotifyImport({
+    loggedIn,
+    cards,
+    setCards,
+    setPreviewId,
+    setSongCounter,
+    setError,
+    nextIdRef,
+  })
 
   // Plain row / preview-card click: collapse to a single-selection of `id`,
   // which also becomes the current song (preview focus).

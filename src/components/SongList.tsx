@@ -3,6 +3,7 @@ import styled from 'styled-components'
 import { trackIdOf } from '../common/helpers'
 import type { CardData } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
+import { DISPLAY_LONG_LIST } from '../common/constants'
 
 // ─── Song List ────────────────────────────────────────────────────────────────
 
@@ -12,7 +13,6 @@ const ListPanel = styled.div`
   overflow: hidden;
 `
 
-const DISPLAY_LONG_LIST = false;
 const LIST_HEIGHT = DISPLAY_LONG_LIST ? 650 : 238;
 
 const ListScroll = styled.div`

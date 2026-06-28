@@ -170,7 +170,7 @@ If `VITE_DATES_ENABLED` is absent or not exactly `true`, the entire AI feature s
 
 ## 🕹️ Usage & Tips
 
-- **Edit cards inline** — Click the **title**, **artist**, or **year** directly on the preview card to edit it. Changes save as soon as you click away.
+- **Edit cards inline** — Edit a song's **title**, **artist**, or **year** in two places: click the field directly on the preview card, or double-click it in the song list. Either way, changes save as soon as you click away.
 
 - **Add / Import** — Paste any Spotify **track**, **album**, **playlist**, or **Liked Songs** link and the type is detected automatically. Tracks and albums work without logging in; importing a **playlist** or your **Liked Songs** requires being signed in to Spotify.
 

@@ -53,7 +53,7 @@ const ListItem = styled.div<{ $selected: boolean; $preview: boolean }>`
   border-left: 3px solid ${p => p.$preview ? '#0052cc' : 'transparent'};
   cursor: pointer;
   background: ${p => p.$selected ? '#e6f7ec' : 'white'};
-  font-weight: ${p => p.$selected ? 700 : 400};
+  font-weight: ${p => p.$selected ? 600 : 400};
   color: ${p => p.$selected ? '#0a7a3c' : '#333'};
   gap: 8px;
   user-select: none;

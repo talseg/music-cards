@@ -62,7 +62,10 @@ const ListItemNum = styled.span`
 `
 
 const ListItemName = styled.span<{ $editing?: boolean }>`
-  flex: 1;
+  // Sizes to its text (so the editable outline hugs the name) while the auto
+  // right margin still eats the leftover space, keeping the artist pushed right.
+  margin-right: auto;
+  max-width: 60%;
   font-size: 0.88rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -247,7 +250,9 @@ export function SongListRow({
         onDoubleClick={e => {
           if (isEditing) return
           setEditing(field)
-          // Focus and place the cursor in the freshly-editable span.
+          // The span only becomes contentEditable after the re-render. Focus it
+          // and select all its text, so a double-click readies the field for
+          // overtyping.
           const el = e.currentTarget
           requestAnimationFrame(() => {
             el.focus()

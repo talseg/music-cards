@@ -20,8 +20,22 @@ const editableCell = css<{ $editing?: boolean }>`
     overflow: visible;
     text-overflow: clip;
     max-width: none;
+    padding: 0 3px;
     outline: 1px solid #999;
     &:hover { outline: 1px solid #999; }
+  `}
+`
+
+// Editable cells whose resting display is a narrow fixed-width, right-aligned
+// box (the year columns). While editing, the fixed width leaves the outline
+// floating away from the right-aligned text, so size the box to its content
+// instead. Composed after editableCell so it wins in the editing state.
+const editableYearCell = css<{ $editing?: boolean }>`
+  ${editableCell}
+  ${p => p.$editing && css`
+    width: auto;
+    min-width: 28px;
+    text-align: center;
   `}
 `
 
@@ -90,7 +104,7 @@ const ListItemYear = styled.span<{ $editing?: boolean }>`
   flex-shrink: 0;
   width: 36px;
   text-align: right;
-  ${editableCell}
+  ${editableYearCell}
 `
 
 const ListItemYearSource = styled.span<{ $match: boolean | null; $clickable: boolean }>`
@@ -109,7 +123,7 @@ const ListItemCard = styled.span<{ $editing?: boolean }>`
   flex-shrink: 0;
   width: 44px;
   text-align: right;
-  ${editableCell}
+  ${editableYearCell}
 `
 
 const ListItemCost = styled.span`
@@ -245,6 +259,7 @@ export function SongListRow({
     return (
       <Span
         $editing={isEditing}
+        title={isEditing ? undefined : 'Double-click to edit'}
         contentEditable={isEditing}
         suppressContentEditableWarning
         onDoubleClick={e => {

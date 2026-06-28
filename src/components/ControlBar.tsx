@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import styled from 'styled-components'
 import { version } from '../../package.json'
 import { sheetCount } from '../common/helpers'
@@ -6,6 +5,7 @@ import type { AuthState } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 import type { SongsInterface } from '../songs/useSongs'
 import { Button } from '../common/shared.styles'
+import { TotalCostField } from './TotalCostField'
 
 // ─── Control bar styled-components ──────────────────────────────────────────────
 
@@ -177,9 +177,6 @@ export function ControlBar({
   // The songs the AI glass acts on. Computed here (not stored) so it always
   // matches the current selection and card list.
   const selectedCards = cards.filter(c => selectedIds.has(c.id))
-  // Free-text mirror of totalCost while the field is focused, so typing (incl.
-  // intermediate states like "0.") isn't fought by the numeric value.
-  const [totalCostInput, setTotalCostInput] = useState<string | null>(null)
 
   return (
     <Bar>
@@ -229,22 +226,7 @@ export function ControlBar({
             />
           </ToggleLabel>
           <AuthStatus>Total $</AuthStatus>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={totalCostInput ?? ai.totalCost.toFixed(5)}
-            onFocus={() => setTotalCostInput(ai.totalCost.toFixed(5))}
-            onChange={e => setTotalCostInput(e.target.value)}
-            onBlur={() => {
-              const parsed = Number(totalCostInput)
-              if (totalCostInput !== null && Number.isFinite(parsed) && parsed >= 0) {
-                ai.onCommitTotalCost(parsed)
-              }
-              setTotalCostInput(null)
-            }}
-            title="Lifetime AI-query spend (USD). Editable to sync across ports/machines."
-            style={{ width: 78, fontSize: '0.85rem', border: '1px solid #ddd', borderRadius: 4, background: 'white', textAlign: 'right', padding: '4px 6px' }}
-          />
+          <TotalCostField value={ai.totalCost} onCommit={ai.onCommitTotalCost} />
         </>
       )}
       <CounterBtn onClick={() => onSongCounterChange(Math.max(1, songCounter - 1))}>−</CounterBtn>

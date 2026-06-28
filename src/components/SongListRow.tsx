@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import styled from 'styled-components'
 import { trackIdOf } from '../common/helpers'
 import type { CardData } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
+
+type EditableField = 'name' | 'artist' | 'year'
 
 // ─── Song List Row ──────────────────────────────────────────────────────────────
 
@@ -162,6 +165,22 @@ const DeleteBtn = styled.button`
   }
 `
 
+// The in-place editor swapped in for a cell on double-click. It inherits the
+// cell's font/color/alignment so the row layout doesn't shift between viewing
+// and editing; the caller passes the matching size via inline style.
+const EditInput = styled.input`
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  border: 1px solid #0052cc;
+  border-radius: 3px;
+  background: white;
+  padding: 0 2px;
+  margin: -1px 0;
+  outline: none;
+  box-sizing: border-box;
+`
+
 interface SongListRowProps {
   card: CardData
   // 0-based index of this card in the list; rendered as the 1-based number.
@@ -177,7 +196,8 @@ interface SongListRowProps {
   onSelectSingle: (id: number) => void
   onToggle: (id: number) => void
   onRange: (id: number) => void
-  onApplyYear: (id: number, year: string) => void
+  // Commits an edited / applied field (name, artist, or year) for this card.
+  onApplyField: (id: number, field: EditableField, value: string) => void
   onDelete: (id: number) => void
 }
 
@@ -191,7 +211,7 @@ export function SongListRow({
   onSelectSingle,
   onToggle,
   onRange,
-  onApplyYear,
+  onApplyField,
   onDelete,
 }: SongListRowProps) {
   const aiDate = ai ? ai.aiDates.get(trackIdOf(card)) : undefined
@@ -200,6 +220,55 @@ export function SongListRow({
   const spotifyMatch = card.spotifyYear === card.trackInfo.year.trim()
   const aiMatch = !!aiDate && !aiError &&
     String(aiDate.year) === card.trackInfo.year.trim()
+
+  // Which cell, if any, is currently being edited (double-click to enter). Only
+  // one cell per row edits at a time.
+  const [editing, setEditing] = useState<EditableField | null>(null)
+
+  // Renders one editable cell: the styled span normally (double-click to edit),
+  // or an in-place input while `editing === field`. Enter / blur commits the
+  // trimmed value (only when it actually changed); Esc reverts without saving.
+  // Clicks are stopped from bubbling so editing never single-selects the row.
+  const EditableCell = (
+    field: EditableField,
+    Span: typeof ListItemName,
+    width: number,
+  ) => {
+    if (editing === field) {
+      return (
+        <EditInput
+          autoFocus
+          defaultValue={card.trackInfo[field]}
+          style={{ width }}
+          onClick={e => e.stopPropagation()}
+          onKeyDown={e => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+            else if (e.key === 'Escape') {
+              // Mark as cancelled so the blur it triggers skips the commit.
+              e.currentTarget.dataset.cancel = '1'
+              e.currentTarget.blur()
+            }
+          }}
+          onBlur={e => {
+            const cancelled = e.currentTarget.dataset.cancel === '1'
+            const value = e.currentTarget.value.trim()
+            if (!cancelled && value !== card.trackInfo[field]) {
+              onApplyField(card.id, field, value)
+            }
+            setEditing(null)
+          }}
+        />
+      )
+    }
+    return (
+      <Span
+        title="Double-click to edit"
+        onDoubleClick={e => { e.stopPropagation(); setEditing(field) }}
+      >
+        {card.trackInfo[field]}
+      </Span>
+    )
+  }
 
   return (
     <ListItem
@@ -225,15 +294,15 @@ export function SongListRow({
         />
         <ListItemNum>{index + 1}</ListItemNum>
       </CheckZone>
-      <ListItemName>{card.trackInfo.name}</ListItemName>
-      <ListItemArtist>{card.trackInfo.artist}</ListItemArtist>
+      {EditableCell('name', ListItemName, 240)}
+      {EditableCell('artist', ListItemArtist, 200)}
       {ai ? (
         <>
           <ListItemYearSource
             $match={spotifyMatch}
             $clickable={!spotifyMatch}
             onClick={!spotifyMatch ? () => {
-              onApplyYear(card.id, card.spotifyYear)
+              onApplyField(card.id, 'year', card.spotifyYear)
             } : undefined}
           >
             {card.spotifyYear}
@@ -242,18 +311,18 @@ export function SongListRow({
             $match={aiDate ? aiMatch : null}
             $clickable={!querying && !!aiDate && !aiError && !aiMatch}
             onClick={!querying && aiDate && !aiError && !aiMatch ? () => {
-              onApplyYear(card.id, String(aiDate.year))
+              onApplyField(card.id, 'year', String(aiDate.year))
             } : undefined}
           >
             {querying ? '…' : aiDate ? aiDate.year : '----'}
           </ListItemYearSource>
-          <ListItemCard>{card.trackInfo.year}</ListItemCard>
+          {EditableCell('year', ListItemCard, 44)}
           <ListItemCost>
             {aiDate ? (aiDate.cost * 100).toFixed(3) : ''}
           </ListItemCost>
         </>
       ) : (
-        <ListItemYear>{card.trackInfo.year}</ListItemYear>
+        EditableCell('year', ListItemYear, 44)
       )}
       <CopyBtn
         title="Copy song name search string to clipboard"

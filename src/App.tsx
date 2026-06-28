@@ -83,7 +83,7 @@ function App() {
           onToggle={toggleSelect}
           onRange={selectRange}
           onToggleAll={toggleSelectAll}
-          onApplyYear={(id, year) => updateCardField(id, 'year', year)}
+          onApplyField={updateCardField}
           onDelete={handleDelete}
         />
 

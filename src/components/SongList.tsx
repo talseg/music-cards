@@ -93,7 +93,7 @@ interface SongListProps {
   onToggle: (id: number) => void
   onRange: (id: number) => void
   onToggleAll: () => void
-  onApplyYear: (id: number, year: string) => void
+  onApplyField: (id: number, field: 'name' | 'artist' | 'year', value: string) => void
   onDelete: (id: number) => void
 }
 
@@ -106,7 +106,7 @@ export function SongList({
   onToggle,
   onRange,
   onToggleAll,
-  onApplyYear,
+  onApplyField,
   onDelete,
 }: SongListProps) {
   // Maps each card id to its <ListItem> DOM node, so we can scroll the
@@ -172,7 +172,7 @@ export function SongList({
               onSelectSingle={onSelectSingle}
               onToggle={onToggle}
               onRange={onRange}
-              onApplyYear={onApplyYear}
+              onApplyField={onApplyField}
               onDelete={onDelete}
             />
           ))

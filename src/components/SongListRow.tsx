@@ -11,16 +11,17 @@ type EditableField = 'name' | 'artist' | 'year'
 // hover, a darker one on focus, and no layout shift. `$editing` relaxes the
 // truncation so the text can be edited in place rather than clipped.
 const editableCell = css<{ $editing?: boolean }>`
-  cursor: text;
   outline: none;
 
   &:hover { outline: 1px dashed #ccc; }
-  &:focus { outline: 1px dashed #999; }
 
   ${p => p.$editing && css`
+    cursor: text;
     overflow: visible;
     text-overflow: clip;
     max-width: none;
+    outline: 1px solid #999;
+    &:hover { outline: 1px solid #999; }
   `}
 `
 
@@ -241,7 +242,6 @@ export function SongListRow({
     return (
       <Span
         $editing={isEditing}
-        title="Double-click to edit"
         contentEditable={isEditing}
         suppressContentEditableWarning
         onDoubleClick={e => {

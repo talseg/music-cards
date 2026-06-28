@@ -1,10 +1,28 @@
 import { useState } from 'react'
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 import { trackIdOf } from '../common/helpers'
 import type { CardData } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 
 type EditableField = 'name' | 'artist' | 'year'
+
+// The delicate in-place edit affordance shared by the editable cells, matching
+// SongCard's editable fields: a text cursor with a faint dashed outline on
+// hover, a darker one on focus, and no layout shift. `$editing` relaxes the
+// truncation so the text can be edited in place rather than clipped.
+const editableCell = css<{ $editing?: boolean }>`
+  cursor: text;
+  outline: none;
+
+  &:hover { outline: 1px dashed #ccc; }
+  &:focus { outline: 1px dashed #999; }
+
+  ${p => p.$editing && css`
+    overflow: visible;
+    text-overflow: clip;
+    max-width: none;
+  `}
+`
 
 // ─── Song List Row ──────────────────────────────────────────────────────────────
 
@@ -42,15 +60,16 @@ const ListItemNum = styled.span`
   text-align: right;
 `
 
-const ListItemName = styled.span`
+const ListItemName = styled.span<{ $editing?: boolean }>`
   flex: 1;
   font-size: 0.88rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  ${editableCell}
 `
 
-const ListItemArtist = styled.span`
+const ListItemArtist = styled.span<{ $editing?: boolean }>`
   font-size: 0.8rem;
   color: #777;
   flex-shrink: 0;
@@ -58,14 +77,16 @@ const ListItemArtist = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  ${editableCell}
 `
 
-const ListItemYear = styled.span`
+const ListItemYear = styled.span<{ $editing?: boolean }>`
   font-size: 0.78rem;
   color: #aaa;
   flex-shrink: 0;
   width: 36px;
   text-align: right;
+  ${editableCell}
 `
 
 const ListItemYearSource = styled.span<{ $match: boolean | null; $clickable: boolean }>`
@@ -78,12 +99,13 @@ const ListItemYearSource = styled.span<{ $match: boolean | null; $clickable: boo
   cursor: ${p => p.$clickable ? 'pointer' : 'default'};
 `
 
-const ListItemCard = styled.span`
+const ListItemCard = styled.span<{ $editing?: boolean }>`
   font-size: 0.78rem;
   color: #555;
   flex-shrink: 0;
   width: 44px;
   text-align: right;
+  ${editableCell}
 `
 
 const ListItemCost = styled.span`
@@ -165,22 +187,6 @@ const DeleteBtn = styled.button`
   }
 `
 
-// The in-place editor swapped in for a cell on double-click. It inherits the
-// cell's font/color/alignment so the row layout doesn't shift between viewing
-// and editing; the caller passes the matching size via inline style.
-const EditInput = styled.input`
-  font: inherit;
-  color: inherit;
-  text-align: inherit;
-  border: 1px solid #0052cc;
-  border-radius: 3px;
-  background: white;
-  padding: 0 2px;
-  margin: -1px 0;
-  outline: none;
-  box-sizing: border-box;
-`
-
 interface SongListRowProps {
   card: CardData
   // 0-based index of this card in the list; rendered as the 1-based number.
@@ -225,45 +231,54 @@ export function SongListRow({
   // one cell per row edits at a time.
   const [editing, setEditing] = useState<EditableField | null>(null)
 
-  // Renders one editable cell: the styled span normally (double-click to edit),
-  // or an in-place input while `editing === field`. Enter / blur commits the
-  // trimmed value (only when it actually changed); Esc reverts without saving.
-  // Clicks are stopped from bubbling so editing never single-selects the row.
-  const EditableCell = (
-    field: EditableField,
-    Span: typeof ListItemName,
-    width: number,
-  ) => {
-    if (editing === field) {
-      return (
-        <EditInput
-          autoFocus
-          defaultValue={card.trackInfo[field]}
-          style={{ width }}
-          onClick={e => e.stopPropagation()}
-          onKeyDown={e => {
-            if (e.key === 'Enter') e.currentTarget.blur()
-            else if (e.key === 'Escape') {
-              // Mark as cancelled so the blur it triggers skips the commit.
-              e.currentTarget.dataset.cancel = '1'
-              e.currentTarget.blur()
-            }
-          }}
-          onBlur={e => {
-            const cancelled = e.currentTarget.dataset.cancel === '1'
-            const value = e.currentTarget.value.trim()
-            if (!cancelled && value !== card.trackInfo[field]) {
-              onApplyField(card.id, field, value)
-            }
-            setEditing(null)
-          }}
-        />
-      )
-    }
+  // Renders one editable cell as the styled span itself, matching SongCard's
+  // delicate in-place editing. Double-click makes the span contentEditable and
+  // focuses it; Enter / blur commits the trimmed value (only when it actually
+  // changed); Esc reverts without saving. Clicks while editing are stopped from
+  // bubbling so they don't single-select the row.
+  const EditableCell = (field: EditableField, Span: typeof ListItemName) => {
+    const isEditing = editing === field
     return (
       <Span
+        $editing={isEditing}
         title="Double-click to edit"
-        onDoubleClick={e => { e.stopPropagation(); setEditing(field) }}
+        contentEditable={isEditing}
+        suppressContentEditableWarning
+        onDoubleClick={e => {
+          if (isEditing) return
+          setEditing(field)
+          // Focus and place the cursor in the freshly-editable span.
+          const el = e.currentTarget
+          requestAnimationFrame(() => {
+            el.focus()
+            const range = document.createRange()
+            range.selectNodeContents(el)
+            const sel = window.getSelection()
+            sel?.removeAllRanges()
+            sel?.addRange(range)
+          })
+        }}
+        onClick={e => { if (isEditing) e.stopPropagation() }}
+        onKeyDown={e => {
+          if (!isEditing) return
+          if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+          else if (e.key === 'Escape') {
+            // Mark as cancelled so the blur it triggers skips the commit, then
+            // restore the original text (contentEditable already mutated it).
+            e.currentTarget.dataset.cancel = '1'
+            e.currentTarget.textContent = card.trackInfo[field]
+            e.currentTarget.blur()
+          }
+        }}
+        onBlur={e => {
+          const cancelled = e.currentTarget.dataset.cancel === '1'
+          delete e.currentTarget.dataset.cancel
+          const value = (e.currentTarget.textContent ?? '').trim()
+          if (!cancelled && value !== card.trackInfo[field]) {
+            onApplyField(card.id, field, value)
+          }
+          setEditing(null)
+        }}
       >
         {card.trackInfo[field]}
       </Span>
@@ -294,8 +309,8 @@ export function SongListRow({
         />
         <ListItemNum>{index + 1}</ListItemNum>
       </CheckZone>
-      {EditableCell('name', ListItemName, 240)}
-      {EditableCell('artist', ListItemArtist, 200)}
+      {EditableCell('name', ListItemName)}
+      {EditableCell('artist', ListItemArtist)}
       {ai ? (
         <>
           <ListItemYearSource
@@ -316,13 +331,13 @@ export function SongListRow({
           >
             {querying ? '…' : aiDate ? aiDate.year : '----'}
           </ListItemYearSource>
-          {EditableCell('year', ListItemCard, 44)}
+          {EditableCell('year', ListItemCard)}
           <ListItemCost>
             {aiDate ? (aiDate.cost * 100).toFixed(3) : ''}
           </ListItemCost>
         </>
       ) : (
-        EditableCell('year', ListItemYear, 44)
+        EditableCell('year', ListItemYear)
       )}
       <CopyBtn
         title="Copy song name search string to clipboard"

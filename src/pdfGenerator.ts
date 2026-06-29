@@ -1,9 +1,8 @@
 // PDF export: lays the cards out for printing on A4-landscape sheets, four cards
 // per sheet, as a row of detail faces above a row of matching QR faces (so a
 // duplex print pairs each song with its QR on the back). Each face is rasterised
-// to PNG with html2canvas — preferring the live React-rendered node (tagged
-// data-pdf-detail / data-pdf-qr by SongCard), and falling back to building the
-// detail face from an HTML string when no live node exists.
+// to PNG with html2canvas from the live React-rendered node (tagged
+// data-pdf-detail / data-pdf-qr by SongCard).
 
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -69,10 +68,11 @@ export async function generatePdf(
     // Capture detail cards
     const detailImages: string[] = []
     for (const { card, id } of sheet) {
-      // Try to get from DOM first (already rendered)
+      // Capture the live node SheetPreview already rendered for this card.
       const img = await captureDetailFromDom(String(id))
       if (!img) {
-
+        // No live node — shouldn't happen (SheetPreview renders every card), but
+        // fail clearly instead of emitting a blank card.
         const msg = `Problem with generating card: ${card.trackInfo.name} ${card.trackInfo.artist}`;
         alert(msg);
         throw new Error(msg);

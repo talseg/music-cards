@@ -205,7 +205,11 @@ export function SheetPreview({ cards, selectedIds, previewId, onSelect, onNaviga
         </PreviewSection>
       )}
 
-      {/* Hidden cards rendered off-screen for PDF capture */}
+      {/* Why this exists: the visible preview above shows only the one sheet (≤4
+          cards) containing the focused card, but pdfGenerator captures each card
+          from its live DOM node and has no from-data fallback. So every off-sheet
+          card must still be in the DOM at export time — we render them all here,
+          off-screen, to guarantee a data-pdf-detail / data-pdf-qr node for each. */}
       <HiddenCards aria-hidden="true">
         {hiddenCards.map(card => (
           <div key={card.id}>

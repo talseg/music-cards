@@ -4,7 +4,7 @@ import { sheetCount } from '../common/helpers'
 import type { AuthState } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 import type { SongsInterface } from '../songs/useSongs'
-import { Button } from '../common/shared.styles'
+import { Button, MutedLabel } from '../common/shared.styles'
 import { AiControls } from './AiControls'
 
 // ─── Control bar styled-components ──────────────────────────────────────────────
@@ -15,11 +15,6 @@ const Bar = styled.div`
   gap: 12px;
   flex-wrap: wrap;
   width: 100%;
-`
-
-const AuthStatus = styled.span`
-  font-size: 0.85rem;
-  color: #555;
 `
 
 const SpotifyButton = styled.button`
@@ -144,13 +139,13 @@ export function ControlBar({
 
   return (
     <Bar>
-      {auth.kind === 'checking' && <AuthStatus>Checking login…</AuthStatus>}
+      {auth.kind === 'checking' && <MutedLabel>Checking login…</MutedLabel>}
       {auth.kind === 'out' && (
         <SpotifyButton onClick={onLogin}>Log in with Spotify</SpotifyButton>
       )}
       {auth.kind === 'in' && (
         <>
-          <AuthStatus>Logged in as: {auth.user}</AuthStatus>
+          <MutedLabel>Logged in as: {auth.user}</MutedLabel>
           <LogoutLink onClick={onLogout}>Log out</LogoutLink>
         </>
       )}

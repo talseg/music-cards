@@ -48,6 +48,32 @@ export interface ImportedTrack {
   trackInfo: TrackInfo
 }
 
+// First 4 chars (the year) of a Spotify release_date; '' when absent.
+export function releaseYear(releaseDate: string | null | undefined): string {
+  return releaseDate ? String(releaseDate).substring(0, 4) : ''
+}
+
+// Only the raw-track fields the bulk importers read. The id is taken separately
+// because callers guard it (skipping idless rows) before mapping.
+interface RawTrack {
+  name: string
+  artists: { name: string }[]
+}
+
+// Build a card-ready ImportedTrack from a raw track plus its already-resolved
+// year. The year source differs by endpoint (the track's own album, or the
+// containing album's), so the caller supplies it rather than reading it here.
+export function toImportedTrack(id: string, raw: RawTrack, year: string): ImportedTrack {
+  return {
+    trackId: id,
+    trackInfo: {
+      name: raw.name,
+      artist: Array.isArray(raw.artists) ? raw.artists.map(a => a.name).join(', ') : '',
+      year,
+    },
+  }
+}
+
 export async function fetchTrackInfo(trackId: string): Promise<TrackInfo> {
   const token = await getAccessToken()
 
@@ -91,20 +117,13 @@ export async function fetchAlbumTracks(albumId: string): Promise<ImportedTrack[]
     throw new Error(`Spotify album fetch failed: ${albumRes.status}`)
   }
   const album = await albumRes.json()
-  const year: string = album.release_date ? String(album.release_date).substring(0, 4) : ''
+  const year = releaseYear(album.release_date)
 
   const results: ImportedTrack[] = []
   const push = (items: AlbumTrackItem[]) => {
     for (const t of items) {
       if (!t || !t.id) continue
-      results.push({
-        trackId: t.id,
-        trackInfo: {
-          name: t.name,
-          artist: Array.isArray(t.artists) ? t.artists.map(a => a.name).join(', ') : '',
-          year,
-        },
-      })
+      results.push(toImportedTrack(t.id, t, year))
     }
   }
 

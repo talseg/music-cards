@@ -7,6 +7,10 @@ export interface CardData {
   trackInfo: TrackInfo
 }
 
+// The editable text fields of a card — name, artist, and release year — shared
+// by the song-list cells, the preview card, and the field-edit handlers.
+export type EditableField = 'name' | 'artist' | 'year'
+
 // Transient AI-date result for one song, keyed by Spotify track id. Deliberately
 // NOT part of CardData and NOT persisted (resets on reload). Entries are kept
 // when a song is removed, so re-adding it restores its previous AI result rather

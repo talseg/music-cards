@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
-import type { ImportedTrack } from './spotify'
+import { toImportedTrack, releaseYear, type ImportedTrack } from './spotify'
 
 // Fetch all tracks from a playlist, following pagination. Requires a logged-in
 // SDK instance — but calls the endpoint directly rather than via the SDK: the
@@ -58,14 +58,7 @@ export async function fetchPlaylistTracks(
       if (!t || !t.id) continue
       if (t.type && t.type !== 'track') continue
 
-      results.push({
-        trackId: t.id,
-        trackInfo: {
-          name: t.name,
-          artist: Array.isArray(t.artists) ? t.artists.map(a => a.name).join(', ') : '',
-          year: t.album?.release_date ? t.album.release_date.substring(0, 4) : '',
-        },
-      })
+      results.push(toImportedTrack(t.id, t, releaseYear(t.album?.release_date)))
     }
 
     const total: number = data.total ?? items.length
@@ -121,14 +114,7 @@ export async function fetchLikedTracks(
       if (!t || !t.id) continue
       if (t.type && t.type !== 'track') continue
 
-      results.push({
-        trackId: t.id,
-        trackInfo: {
-          name: t.name,
-          artist: Array.isArray(t.artists) ? t.artists.map(a => a.name).join(', ') : '',
-          year: t.album?.release_date ? t.album.release_date.substring(0, 4) : '',
-        },
-      })
+      results.push(toImportedTrack(t.id, t, releaseYear(t.album?.release_date)))
     }
 
     const total: number = data.total ?? items.length

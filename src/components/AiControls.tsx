@@ -1,15 +1,10 @@
 import styled from 'styled-components'
 import type { CardData } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
-import { Button } from '../common/shared.styles'
+import { Button, MutedLabel } from '../common/shared.styles'
 import { TotalCostField } from './TotalCostField'
 
 // ─── AI controls styled-components ──────────────────────────────────────────────
-
-const AuthStatus = styled.span`
-  font-size: 0.85rem;
-  color: #555;
-`
 
 const ToggleLabel = styled.label`
   display: inline-flex;
@@ -85,7 +80,7 @@ export function AiControls({ ai, selectedCards }: AiControlsProps) {
           onClick={ai.onToggleWebSearch}
         />
       </ToggleLabel>
-      <AuthStatus>Total $</AuthStatus>
+      <MutedLabel>Total $</MutedLabel>
       <TotalCostField value={ai.totalCost} onCommit={ai.onCommitTotalCost} />
     </>
   )

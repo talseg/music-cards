@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Dispatch, SetStateAction, RefObject } from 'react'
-import type { CardData } from '../common/types'
+import type { CardData, EditableField } from '../common/types'
 import { generatePdf } from '../pdfGenerator'
 import { useSpotifyImport } from './useSpotifyImport'
 import { useSelectAndDelete } from './useSelectAndDelete'
@@ -36,7 +36,7 @@ export interface SongsInterface {
   inputRef: RefObject<HTMLInputElement | null>
   handleImport: () => Promise<void>
   handleDelete: (id: number) => void
-  updateCardField: (id: number, field: 'name' | 'artist' | 'year', value: string) => void
+  updateCardField: (id: number, field: EditableField, value: string) => void
   handleGeneratePdf: () => Promise<void>
 }
 
@@ -97,7 +97,7 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     nextIdRef,
   })
 
-  const updateCardField = (id: number, field: 'name' | 'artist' | 'year', value: string) => {
+  const updateCardField = (id: number, field: EditableField, value: string) => {
     setCards(prev => prev.map(c =>
       c.id === id
         ? { ...c, trackInfo: { ...c.trackInfo, [field]: value } }

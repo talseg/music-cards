@@ -1,5 +1,12 @@
 import styled from 'styled-components'
 
+// Small muted inline label shared by the control bar (auth status) and the AI
+// cluster (the "Total $" caption).
+export const MutedLabel = styled.span`
+  font-size: 0.85rem;
+  color: #555;
+`
+
 // Shared button used across the app (control bar, input rows, modal).
 export const Button = styled.button<{ $primary?: boolean }>`
   font-size: 0.95rem;

@@ -8,15 +8,12 @@
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import type { TrackInfo } from './spotify/spotify'
+import { CARDS_PER_SHEET } from './common/constants'
+import { CARD_WIDTH_PX, CARD_HEIGHT_PX, CARD_RADIUS_PX } from './components/SongCard'
 
 // Standard playing card: 63.5mm × 88.9mm
 const CARD_W_MM = 63.5
 const CARD_H_MM = 88.9
-const CARDS_PER_SHEET = 4
-// Pixel dimensions of the rasterised card faces — mirror SongCard.tsx.
-const CARD_WIDTH_PX = 159
-const CARD_HEIGHT_PX = 222
-const CARD_RADIUS_PX = 8
 
 export interface CardInput {
   spotifyUri: string

@@ -1,10 +1,11 @@
 import styled from 'styled-components'
 import { QRCodeSVG } from 'qrcode.react'
-import type { CardData } from '../common/types'
+import type { CardData, EditableField } from '../common/types'
 
-// Card dimensions (match the values used in App.tsx and pdfGenerator.ts).
+// Card pixel dimensions — the single source of truth, also imported by
+// pdfGenerator.ts so the PDF capture matches the on-screen card exactly.
 export const CARD_WIDTH_PX = 159
-const CARD_HEIGHT_PX = 222
+export const CARD_HEIGHT_PX = 222
 export const CARD_RADIUS_PX = 8
 
 // ─── Card styled-components ─────────────────────────────────────────────────────
@@ -89,8 +90,6 @@ const GameCardLabel = styled.div`
 `
 
 // ─── SongCard (both faces) ──────────────────────────────────────────────────────
-
-type EditableField = 'name' | 'artist' | 'year'
 
 interface SongCardProps {
   card: CardData

@@ -7,6 +7,7 @@ import { sdk } from '../auth/useAuth'
 import { fetchPlaylistTracks, fetchLikedTracks } from '../spotify/spotify-user'
 import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
 import { STAGGER_MS } from '../common/constants'
+import { trackIdOf } from '../common/helpers'
 
 // What useSpotifyImport needs from the song domain to commit a successful import:
 // the live useSongs state setters and reads it writes new cards through.
@@ -73,7 +74,7 @@ export function useSpotifyImport(deps: ImportDeps): SpotifyImportInterface {
         tracks = await fetchLikedTracks(sdk)
       }
 
-      const existing = new Set(cards.map(c => c.spotifyUri.split(':').pop() || ''))
+      const existing = new Set(cards.map(trackIdOf))
       const newCards: CardData[] = []
       for (const t of tracks) {
         if (existing.has(t.trackId)) continue

@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react'
 import styled from 'styled-components'
-import type { CardData } from '../common/types'
+import type { CardData, EditableField } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 import { DISPLAY_LONG_LIST } from '../common/constants'
 import { RowCheckbox } from '../common/shared.styles'
@@ -85,7 +85,7 @@ interface SongListProps {
   onToggle: (id: number) => void
   onRange: (id: number) => void
   onToggleAll: () => void
-  onApplyField: (id: number, field: 'name' | 'artist' | 'year', value: string) => void
+  onApplyField: (id: number, field: EditableField, value: string) => void
   onDelete: (id: number) => void
 }
 

@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import styled, { css } from 'styled-components'
 import { trackIdOf } from '../common/helpers'
-import type { CardData } from '../common/types'
+import type { CardData, EditableField } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 import { RowCheckbox } from '../common/shared.styles'
-
-type EditableField = 'name' | 'artist' | 'year'
 
 // The delicate in-place edit affordance shared by the editable cells, matching
 // SongCard's editable fields: a text cursor with a faint dashed outline on

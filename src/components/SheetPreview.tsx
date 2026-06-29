@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import type { CardData } from '../common/types'
+import type { CardData, EditableField } from '../common/types'
 import { CARDS_PER_SHEET } from '../common/constants'
 import { CARD_RADIUS_PX, CARD_WIDTH_PX, SongCard } from './SongCard'
 
@@ -117,7 +117,7 @@ interface SheetPreviewProps {
   // Clicking a card single-selects it; the sheet arrows only move the preview.
   onSelect: (id: number) => void
   onNavigate: (id: number) => void
-  onFieldChange: (id: number, field: 'name' | 'artist' | 'year', value: string) => void
+  onFieldChange: (id: number, field: EditableField, value: string) => void
 }
 
 // The printable-sheet preview: shows the one sheet (a CARDS_PER_SHEET grid of card

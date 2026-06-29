@@ -77,10 +77,11 @@ const SongCounterValue = styled.input`
   font-weight: 700;
   color: #333;
   border: none;
-  background: transparent;
+  background: #f0f0f0;
   text-align: center;
   outline: none;
-  padding: 0;
+  padding: 4px 0;
+  border: 1px solid #ddd;
 
   &::-webkit-inner-spin-button,
   &::-webkit-outer-spin-button {
@@ -168,7 +169,6 @@ export function ControlBar({
           const v = parseInt(e.target.value, 10)
           if (!isNaN(v) && v >= 1) onSongCounterChange(v)
         }}
-        style={{ width: 34, fontWeight: 700, fontSize: '0.95rem', border: '1px solid #ddd', borderRadius: 4, background: '#f0f0f0', textAlign: 'center', padding: '4px 0' }}
       />
       <CounterBtn onClick={() => onSongCounterChange(songCounter + 1)}>+</CounterBtn>
       <SheetCounter style={{ paddingLeft: 0 }}>

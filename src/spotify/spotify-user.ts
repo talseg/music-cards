@@ -10,6 +10,31 @@
 import type { SpotifyApi } from '@spotify/web-api-ts-sdk'
 import type { ImportedTrack } from './spotify'
 
+// The track fields we read out of a playlist / liked-songs item.
+interface SpotifyTrackLike {
+  id: string | null
+  name: string
+  type?: string
+  artists: { name: string }[]
+  album: { release_date: string }
+}
+
+// Map a Spotify track object to an ImportedTrack, or null to skip it: a missing
+// id, or a non-track item such as a local file or podcast episode. The caller
+// unwraps the track from its entry first (the one bit that differs per endpoint).
+function toImportedTrack(t: SpotifyTrackLike | null): ImportedTrack | null {
+  if (!t || !t.id) return null
+  if (t.type && t.type !== 'track') return null
+  return {
+    trackId: t.id,
+    trackInfo: {
+      name: t.name,
+      artist: Array.isArray(t.artists) ? t.artists.map(a => a.name).join(', ') : '',
+      year: t.album?.release_date ? t.album.release_date.substring(0, 4) : '',
+    },
+  }
+}
+
 // Fetch all tracks from a playlist, following pagination. Requires a logged-in
 // SDK instance — but calls the endpoint directly rather than via the SDK: the
 // SDK (v1.2.0) still uses the deprecated /tracks endpoint, which returns 403
@@ -47,25 +72,8 @@ export async function fetchPlaylistTracks(
     for (const entry of items) {
       // New shape: entry.item ; legacy fallback: entry.track
       const e = entry as { item?: unknown; track?: unknown }
-      const t = (e.item ?? e.track) as {
-        id: string | null
-        name: string
-        type?: string
-        artists: { name: string }[]
-        album: { release_date: string }
-      } | null
-
-      if (!t || !t.id) continue
-      if (t.type && t.type !== 'track') continue
-
-      results.push({
-        trackId: t.id,
-        trackInfo: {
-          name: t.name,
-          artist: Array.isArray(t.artists) ? t.artists.map(a => a.name).join(', ') : '',
-          year: t.album?.release_date ? t.album.release_date.substring(0, 4) : '',
-        },
-      })
+      const mapped = toImportedTrack((e.item ?? e.track) as SpotifyTrackLike | null)
+      if (mapped) results.push(mapped)
     }
 
     const total: number = data.total ?? items.length
@@ -110,25 +118,8 @@ export async function fetchLikedTracks(
     const items: unknown[] = data.items ?? []
 
     for (const entry of items) {
-      const t = (entry as { track?: unknown }).track as {
-        id: string | null
-        name: string
-        type?: string
-        artists: { name: string }[]
-        album: { release_date: string }
-      } | null
-
-      if (!t || !t.id) continue
-      if (t.type && t.type !== 'track') continue
-
-      results.push({
-        trackId: t.id,
-        trackInfo: {
-          name: t.name,
-          artist: Array.isArray(t.artists) ? t.artists.map(a => a.name).join(', ') : '',
-          year: t.album?.release_date ? t.album.release_date.substring(0, 4) : '',
-        },
-      })
+      const mapped = toImportedTrack((entry as { track?: unknown }).track as SpotifyTrackLike | null)
+      if (mapped) results.push(mapped)
     }
 
     const total: number = data.total ?? items.length

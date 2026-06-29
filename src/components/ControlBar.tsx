@@ -94,7 +94,6 @@ const SheetCounter = styled.div`
   color: #888;
   white-space: nowrap;
   line-height: 1;
-  padding-left: 120px;
 `
 
 const VersionLabel = styled.div`
@@ -171,7 +170,7 @@ export function ControlBar({
         }}
       />
       <CounterBtn onClick={() => onSongCounterChange(songCounter + 1)}>+</CounterBtn>
-      <SheetCounter style={{ paddingLeft: 0 }}>
+      <SheetCounter>
         {cardCount > 0
           ? `${sheetCount(cardCount)} sheet${parseFloat(sheetCount(cardCount)) !== 1 ? 's' : ''}`
           : ''}

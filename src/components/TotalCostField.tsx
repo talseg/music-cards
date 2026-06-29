@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import styled from 'styled-components'
 
 interface TotalCostFieldProps {
   // The committed lifetime AI-query spend (USD).
@@ -6,6 +7,15 @@ interface TotalCostFieldProps {
   // Commit a new, validated value (>= 0). Persists upstream.
   onCommit: (n: number) => void
 }
+
+const InputStyled = styled.input`
+  width: 78px;
+  font-size: 0.85rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: right;
+  padding: 4px 6px; 
+`
 
 // The "Total $" field from the control bar: shows the committed lifetime AI-query
 // spend, and on focus becomes an editable text mirror so typing intermediate
@@ -16,7 +26,7 @@ export function TotalCostField({ value, onCommit }: TotalCostFieldProps) {
   const [input, setInput] = useState<string | null>(null)
 
   return (
-    <input
+    <InputStyled
       type="text"
       inputMode="decimal"
       value={input ?? value.toFixed(5)}
@@ -30,7 +40,6 @@ export function TotalCostField({ value, onCommit }: TotalCostFieldProps) {
         setInput(null)
       }}
       title="Lifetime AI-query spend (USD). Editable to sync across ports/machines."
-      style={{ width: 78, fontSize: '0.85rem', border: '1px solid #ddd', borderRadius: 4, background: 'white', textAlign: 'right', padding: '4px 6px' }}
     />
   )
 }

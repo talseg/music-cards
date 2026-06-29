@@ -3,6 +3,7 @@ import styled, { css } from 'styled-components'
 import { trackIdOf } from '../common/helpers'
 import type { CardData } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
+import { RowCheckbox } from '../common/shared.styles'
 
 type EditableField = 'name' | 'artist' | 'year'
 
@@ -135,15 +136,6 @@ const CheckZone = styled.div`
   margin: -8px 0 -8px -12px;
   padding: 0 0 0 12px;
   cursor: copy;
-`
-
-// Checkbox shared by the header (select-all) and each row, sized to the column.
-const RowCheckbox = styled.input`
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  margin: 0;
-  cursor: inherit;
 `
 
 const CopyBtn = styled.button`

@@ -21,3 +21,13 @@ export const Button = styled.button<{ $primary?: boolean }>`
     opacity: 0.5;
   }
 `
+
+// Checkbox shared by the song list's header (select-all) and each row, sized to
+// the column. Inherits its cursor from the surrounding select-zone.
+export const RowCheckbox = styled.input`
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: inherit;
+`

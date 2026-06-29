@@ -3,6 +3,7 @@ import styled from 'styled-components'
 import type { CardData } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 import { DISPLAY_LONG_LIST } from '../common/constants'
+import { RowCheckbox } from '../common/shared.styles'
 import { SongListRow } from './SongListRow'
 
 // ─── Song List ────────────────────────────────────────────────────────────────
@@ -69,15 +70,6 @@ const HeadCard = styled.span`width: 54px; flex-shrink: 0; text-align: right;`
 const HeadCost = styled.span`width: 56px; flex-shrink: 0; text-align: right;`
 const HeadCopy = styled.span`width: 22px; flex-shrink: 0;`
 const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
-
-// Checkbox shared by the header (select-all) and each row, sized to the column.
-const RowCheckbox = styled.input`
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  margin: 0;
-  cursor: inherit;
-`
 
 interface SongListProps {
   cards: CardData[]

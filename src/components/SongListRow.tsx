@@ -212,6 +212,9 @@ interface SongListRowProps {
   onDelete: (id: number) => void
 }
 
+// One song-list row: a selection hit-zone (checkbox + number), in-place editable
+// name / artist / year cells, the copy-search and delete buttons, and — when the
+// AI-dates feature is on — the extra Spotify-year / AI-year / cost columns.
 export function SongListRow({
   card,
   index,

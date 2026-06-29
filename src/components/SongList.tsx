@@ -97,6 +97,8 @@ interface SongListProps {
   onDelete: (id: number) => void
 }
 
+// The song list: a header row (select-all + column labels) over the scrollable
+// list of SongListRows. Keeps the preview-focused row scrolled into view.
 export function SongList({
   cards,
   selectedIds,

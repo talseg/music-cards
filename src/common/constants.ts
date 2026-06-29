@@ -12,4 +12,6 @@ export const CARDS_PER_SHEET = 4
 // user's place).
 export const STAGGER_MS = 40
 
+// Song-list panel height: tall enough to show many rows at once when true,
+// compact (a few rows, scroll for the rest) when false.
 export const DISPLAY_LONG_LIST = true;

@@ -4,11 +4,11 @@ import type { AuthState } from '../common/types'
 import { createAuth, type InitAuthResult } from './spotify-auth'
 
 // Create the auth bundle once at module load. The shared module (src/auth) is
-// app-agnostic; everything app-specific about auth lives in this config.
-// Only what the playlist-import feature needs. Deliberately omits the playback
-// scopes the separate player app uses.
+// app-agnostic; everything app-specific about auth lives in this config below.
 const auth_ = createAuth({
   clientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID as string,
+  // Only what the playlist-import feature needs — deliberately omits the playback
+  // scopes the separate player app uses.
   scopes: ['playlist-read-private', 'playlist-read-collaborative', 'user-library-read'],
   cachePrefix: 'music-cards:',
 })
@@ -23,8 +23,7 @@ export function getRedirectUri(): string {
 
 // Map the shared auth module's neutral result onto this app's AuthState model.
 // (Error classification and the memoized exactly-once init live in
-// src/auth/spotify-auth.ts; messages here are preserved from the previous
-// in-file implementation.)
+// src/auth/spotify-auth.ts.)
 function toAuthState(result: InitAuthResult): AuthState {
   if (result.ok) {
     return { kind: 'in', user: result.user }
@@ -62,11 +61,11 @@ export interface AuthInterface {
 export function useAuth(): AuthInterface {
   const [auth, setAuth] = useState<AuthState>({ kind: 'checking' })
 
-  // On mount: handle the OAuth callback, or silently validate a stored token.
-  // The actual work is memoized inside the shared auth module (getInitAuth),
-  // so it runs exactly once even though StrictMode invokes this effect twice
-  // in dev. Both invocations await the same promise; whichever is still
-  // mounted applies the result, so the UI always leaves the 'checking' state.
+  // On mount, resolve the initial auth state once: getInitAuth() handles the
+  // OAuth callback or silently validates a stored token. It's memoized in the
+  // shared module, so the work runs once despite StrictMode's double-mount; the
+  // cancel flag ensures only the still-mounted invocation applies the result
+  // (leaving the 'checking' state).
   useEffect(() => {
     let cancelled = false
     auth_.getInitAuth().then(result => {

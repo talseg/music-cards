@@ -1,3 +1,10 @@
+// PDF export: lays the cards out for printing on A4-landscape sheets, four cards
+// per sheet, as a row of detail faces above a row of matching QR faces (so a
+// duplex print pairs each song with its QR on the back). Each face is rasterised
+// to PNG with html2canvas — preferring the live React-rendered node (tagged
+// data-pdf-detail / data-pdf-qr by SongCard), and falling back to building the
+// detail face from an HTML string when no live node exists.
+
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import type { TrackInfo } from './spotify/spotify'
@@ -6,6 +13,7 @@ import type { TrackInfo } from './spotify/spotify'
 const CARD_W_MM = 63.5
 const CARD_H_MM = 88.9
 const CARDS_PER_SHEET = 4
+// Pixel dimensions of the rasterised card faces — mirror SongCard.tsx.
 const CARD_WIDTH_PX = 159
 const CARD_HEIGHT_PX = 222
 const CARD_RADIUS_PX = 8
@@ -15,10 +23,8 @@ export interface CardInput {
   trackInfo: TrackInfo
 }
 
-// Build a QR code SVG data URL using the qrcode library via canvas approach
-// We use a simple approach: render an inline SVG QR approximation
-// Actually we'll use a hidden canvas element approach with qrcode-generator
-
+// Fallback detail face, built as an HTML string for the rare case where no live
+// data-pdf-detail node exists for a card. Mirrors SongCard's front-face markup.
 function buildDetailCardHtml(card: CardInput): string {
   return `
     <div style="

@@ -1,6 +1,9 @@
 import type { CardData } from './types'
 import { CARDS_PER_SHEET } from './constants'
 
+// Pure helpers shared by more than one component. Anything used by a single
+// component stays local to it; it only moves here once a second caller needs it.
+
 // Spotify track id for a card (the part after the last ':' in the URI).
 export const trackIdOf = (card: CardData) => card.spotifyUri.split(':').pop() || ''
 

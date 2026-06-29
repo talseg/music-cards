@@ -1,6 +1,6 @@
 // Pure parser that infers the import type from a Spotify link's type keyword.
 // The single extension point for new import kinds — add a kind here and a branch
-// in useSongs.handleImport.
+// in handleImport (useSpotifyImport.ts).
 
 export type SpotifyLinkKind = 'track' | 'playlist' | 'album' | 'liked'
 

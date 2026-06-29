@@ -95,7 +95,8 @@ const SheetSlotPlaceholder = styled.div`
   background: #fafafa;
 `
 
-// Hidden container: renders all cards off-screen for PDF capture
+// Hidden container: renders the off-sheet cards off-screen so the PDF capture has
+// a node for every card (the on-sheet ones are captured from the visible preview).
 const HiddenCards = styled.div`
   position: fixed;
   top: -9999px;
@@ -119,6 +120,10 @@ interface SheetPreviewProps {
   onFieldChange: (id: number, field: 'name' | 'artist' | 'year', value: string) => void
 }
 
+// The printable-sheet preview: shows the one sheet (a CARDS_PER_SHEET grid of card
+// pairs) that contains the preview-focused card, with arrows to page between
+// sheets. Cards on other sheets are still rendered hidden off-screen so
+// pdfGenerator can capture every card on export.
 export function SheetPreview({ cards, selectedIds, previewId, onSelect, onNavigate, onFieldChange }: SheetPreviewProps) {
   const previewCard = cards.find(c => c.id === previewId) ?? null
   const previewIndex = previewCard ? cards.findIndex(c => c.id === previewId) : -1

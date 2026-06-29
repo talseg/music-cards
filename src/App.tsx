@@ -37,6 +37,8 @@ const AuthError = styled.div`
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
+// The app root: wires the auth / songs / AI-dates hooks together and lays out the
+// control bar, import input, song list, and sheet preview.
 function App() {
   const { auth, loggedIn, login, logout } = useAuth()
   const songsInterface = useSongs(loggedIn)
@@ -98,7 +100,7 @@ function App() {
         
       </ItemsContainer>
 
-      {/* Hidden onfirmation dialog */}
+      {/* Web-search confirmation dialog — renders only while enabling web search */}
       <WebSearchConfirmModal ai={ai} />
     </AppContainer>
   )

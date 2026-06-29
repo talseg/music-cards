@@ -1,3 +1,12 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC / CLIENT-CREDENTIALS WORLD — track & album reading
+//
+// These endpoints are public, so they use an app-only client-credentials token
+// (no login required). The token is fetched from the proxy and cached in-module
+// until just before it expires. The user-token counterpart (playlists, liked
+// songs) lives in spotify-user.ts.
+// ─────────────────────────────────────────────────────────────────────────────
+
 let accessToken: string | null = null
 let tokenExpiry = 0
 
@@ -20,6 +29,7 @@ async function getAccessToken(): Promise<string> {
 
   const data = await response.json()
   accessToken = data.access_token
+  // Expire it a minute early so an in-flight request never races the real expiry.
   tokenExpiry = Date.now() + (data.expires_in - 60) * 1000
 
   return accessToken!

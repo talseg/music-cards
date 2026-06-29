@@ -49,15 +49,13 @@ export interface AiState {
 // active" — no separate flag needed.
 export function useAiDates(clearError: () => void, selectedIds: Set<number>): AiState | undefined {
   // AI release-year results, keyed by Spotify track id. Presence of an entry =
-  // "already queried" (so the same song isn't queried twice). Entries persist
-  // when songs are removed, so re-adding a song restores its previous result.
+  // "already queried" (so the same song isn't queried twice). The entry lifecycle
+  // (kept on song removal, reset on reload) is documented on the AiDate type.
   const [aiDates, setAiDates] = useState<Map<string, AiDate>>(new Map())
-  // 'running' = a get-dates pass is in flight; 'pausing' = pause requested but the
-  // current song's call is still finishing; 'paused' = a pass was interrupted with
-  // songs still unqueried; 'idle' = nothing running. The pass loop is sequential,
-  // so pausing only stops it between songs (the in-flight call always finishes and
-  // is saved). pauseRef is read inside that loop, where React state wouldn't be
-  // visible — a ref always reflects the latest value.
+  // The run/pause phase (the four values are defined on the AiStatus type). The
+  // pass loop is sequential, so pausing only stops it between songs (the in-flight
+  // call always finishes and is saved). pauseRef is read inside that loop, where
+  // React state wouldn't be visible — a ref always reflects the latest value.
   const [aiStatus, setAiStatus] = useState<AiStatus>('idle')
   const pauseRef = useRef(false)
   // "Stop and forget" — set when the selection changes mid-run, vs pauseRef's

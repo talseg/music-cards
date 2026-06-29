@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// USER-TOKEN WORLD — playlist reading
+// USER-TOKEN WORLD — playlist & liked-songs reading
 //
 // Playlist endpoints return 403 for the client-credentials token, so this must
 // use a logged-in user token. Every function here takes an authenticated

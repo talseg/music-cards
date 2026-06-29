@@ -1,13 +1,14 @@
-// AI release-year lookup via the Perplexity Agent API (bare model, no web search).
+// AI release-year lookup via the Perplexity Agent API.
 //
-// The browser calls the local /api/perplexity proxy with only { model, input }.
-// The proxy (configured in vite.config.ts) attaches the secret API key
-// server-side, so the key is never exposed to the browser bundle. This mirrors
-// the existing Spotify client-secret proxy pattern.
+// The browser calls the local /api/perplexity proxy; the proxy (configured in
+// vite.config.ts) attaches the secret API key server-side, so the key is never
+// exposed to the browser bundle. This mirrors the existing Spotify client-secret
+// proxy pattern.
 //
-// We deliberately send NO `tools` and NO `preset` so the model answers purely
-// from its training knowledge — far cheaper than search-grounded queries, and
-// year-level accuracy is all the game needs.
+// By default we send NO `tools` and NO `preset`, so the model answers purely from
+// its training knowledge — far cheaper than search-grounded queries, and
+// year-level accuracy is all the game needs. The optional web-search mode
+// (webSearch=true) attaches a web_search tool for the harder cases.
 
 import promptTemplate from '../assets/perplexityPrompt.txt?raw'
 

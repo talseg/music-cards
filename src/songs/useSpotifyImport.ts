@@ -8,10 +8,8 @@ import { fetchPlaylistTracks, fetchLikedTracks } from '../spotify/spotify-user'
 import { parseSpotifyLink, LINK_NEEDS_LOGIN } from '../spotify/spotifyLink'
 import { STAGGER_MS } from '../common/constants'
 
-// What useSpotifyImport needs from the song domain to commit a successful
-// import. These are the live useSongs state setters / reads, passed straight
-// through so the append + preview-follow + counter behavior runs unchanged,
-// exactly where it did before.
+// What useSpotifyImport needs from the song domain to commit a successful import:
+// the live useSongs state setters and reads it writes new cards through.
 interface ImportDeps {
   loggedIn: boolean
   cards: CardData[]
@@ -23,8 +21,7 @@ interface ImportDeps {
 }
 
 // The Spotify-import slice of the song domain: the paste input, the in-flight
-// flag, the import-disabled gating, and handleImport itself. Split out of
-// useSongs purely to shrink it — the behavior is identical. `loggedIn` gates the
+// flag, the import-disabled gating, and handleImport itself. `loggedIn` gates the
 // playlist / liked-songs import features.
 export interface SpotifyImportInterface {
   input: string

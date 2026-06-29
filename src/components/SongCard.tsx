@@ -5,7 +5,7 @@ import type { CardData, EditableField } from '../common/types'
 // Card pixel dimensions — the single source of truth, also imported by
 // pdfGenerator.ts so the PDF capture matches the on-screen card exactly.
 export const CARD_WIDTH_PX = 159
-export const CARD_HEIGHT_PX = 222
+const CARD_HEIGHT_PX = 222
 export const CARD_RADIUS_PX = 8
 
 // ─── Card styled-components ─────────────────────────────────────────────────────

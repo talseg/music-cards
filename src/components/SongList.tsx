@@ -63,12 +63,12 @@ const HeadCheckZone = styled.div`
   cursor: copy;
 `
 const HeadName = styled.span`flex: 1;`
-const HeadArtist = styled.span`width: 160px; flex-shrink: 0;`
+const HeadArtist = styled.span`width: 60px; flex-shrink: 0;`
 const HeadSpotify = styled.span`width: 44px; flex-shrink: 0; text-align: right;`
-const HeadAi = styled.span`width: 26px; flex-shrink: 0; text-align: right;`
-const HeadCard = styled.span`width: 54px; flex-shrink: 0; text-align: right;`
-const HeadCost = styled.span`width: 56px; flex-shrink: 0; text-align: right;`
-const HeadCopy = styled.span`width: 22px; flex-shrink: 0;`
+const HeadAi = styled.span`width: 28px; flex-shrink: 0; text-align: right;`
+const HeadCard = styled.span`width: 52px; flex-shrink: 0; text-align: right;`
+const HeadCost = styled.span`width: 50px; flex-shrink: 0; text-align: right;`
+const HeadCopy = styled.span`width: 34px; flex-shrink: 0;`
 const HeadDelete = styled.span`width: 22px; flex-shrink: 0;`
 
 interface SongListProps {

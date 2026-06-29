@@ -31,6 +31,7 @@ export interface SongsInterface {
   importDisabled: boolean
   importDisabledReason: string
   pdfLoading: boolean
+  pdfProgress: { done: number; total: number } | null
   error: string | null
   clearError: () => void
   inputRef: RefObject<HTMLInputElement | null>
@@ -54,6 +55,7 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     return stored && Number.isFinite(parsed) && parsed >= 1 ? parsed : 1
   })
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfProgress, setPdfProgress] = useState<{ done: number; total: number } | null>(null)
   const nextIdRef = useRef(1)
 
   const clearError = () => setError(null)
@@ -108,16 +110,19 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
   const handleGeneratePdf = async () => {
     if (cards.length === 0) return
     setPdfLoading(true)
+    setPdfProgress({ done: 0, total: cards.length })
     setError(null)
     try {
       await generatePdf(
         cards.map(c => ({ spotifyUri: c.spotifyUri, trackInfo: c.trackInfo })),
-        cards.map(c => c.id)
+        cards.map(c => c.id),
+        (done, total) => setPdfProgress({ done, total })
       )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate PDF')
     } finally {
       setPdfLoading(false)
+      setPdfProgress(null)
     }
   }
 
@@ -138,6 +143,7 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     importDisabled,
     importDisabledReason,
     pdfLoading,
+    pdfProgress,
     error,
     clearError,
     inputRef,

@@ -130,6 +130,7 @@ export function ControlBar({
     songCounter,
     setSongCounter: onSongCounterChange,
     pdfLoading,
+    pdfProgress,
     handleGeneratePdf: onGeneratePdf,
   } = songs
   const cardCount = cards.length
@@ -153,7 +154,9 @@ export function ControlBar({
         onClick={onGeneratePdf}
         disabled={cardCount === 0 || pdfLoading}
       >
-        {pdfLoading ? 'Generating…' : 'Generate PDF'}
+        {pdfLoading
+          ? (pdfProgress ? `Generating… ${pdfProgress.done}/${pdfProgress.total}` : 'Generating…')
+          : 'Generate PDF'}
       </Button>
       {ai && <AiControls ai={ai} selectedCards={selectedCards} />}
       <CounterBtn onClick={() => onSongCounterChange(Math.max(1, songCounter - 1))}>−</CounterBtn>

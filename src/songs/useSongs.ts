@@ -11,30 +11,17 @@ import { useSelectAndDelete } from './useSelectAndDelete'
 // this too.
 const SONG_COUNTER_KEY = 'music-cards-app:songCounter'
 
-// The song domain exposed to the app. The return shape of useSongs.
-//
-// Selection model (no hidden state — everything below is visible):
-//   selectedIds  - the multi-selection set (green / operated-on); may be empty.
-//   previewId    - the single "current song": what the preview pages to and the
-//                  blue list marker. Moves on any row / preview-card / checkbox
-//                  click; survives an empty selection (unselect-all leaves it put).
-//   shift anchor - NOT stored: it's the nearest selected song to the click
-//                  (above if any, else below), derived from the set.
+// The flat surface App consumes: the card list plus everything the two sub-hooks
+// (useSelectAndDelete, useSpotifyImport) expose. The return shape of useSongs;
+// re-exposed fields are documented in the sub-hook that owns them.
 export interface SongsInterface {
   cards: CardData[]
   selectedIds: Set<number>
   previewId: number | null
-  // Plain row / preview-card click: collapse to a single-selection of `id`.
   selectSingle: (id: number) => void
-  // Checkbox click: toggle `id` in/out of the selection; makes it the current song.
   toggleSelect: (id: number) => void
-  // Shift-click a checkbox: ADD the block bridging `id` to the nearest selected
-  // song (the one above if any, else the one below). Just `id` when nothing is
-  // selected. Only ever grows the selection.
   selectRange: (id: number) => void
-  // Header checkbox: anything selected ⇒ clear; only an empty selection selects all.
   toggleSelectAll: () => void
-  // Sheet arrows: move the preview without touching the selection.
   navigatePreview: (id: number) => void
   songCounter: number
   setSongCounter: Dispatch<SetStateAction<number>>
@@ -53,10 +40,11 @@ export interface SongsInterface {
   handleGeneratePdf: () => Promise<void>
 }
 
-// Owns the song domain: the card list, selection, the persisted song counter,
-// and every operation that mutates them (add / import / delete / edit / clear /
-// PDF export). Mirrors useAuth / useAiDates — App just consumes what it returns.
-// `loggedIn` comes from useAuth and gates the playlist-import feature.
+// Composes the song domain into the single surface App consumes. Owns the card
+// list, the persisted song counter, field edits and PDF export; delegates
+// selection + delete to useSelectAndDelete and importing to useSpotifyImport.
+// Mirrors useAuth / useAiDates — App just consumes what it returns. `loggedIn`
+// comes from useAuth and gates the playlist-import feature.
 export function useSongs(loggedIn: boolean) : SongsInterface {
   const [cards, setCards] = useState<CardData[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -74,10 +62,9 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     localStorage.setItem(SONG_COUNTER_KEY, String(songCounter))
   }, [songCounter])
 
-  // The selection & deletion slice (the multi-selection set, the preview focus,
-  // the click handlers that move them, and delete). It owns selectedIds /
-  // previewId; setPreviewId is threaded into useSpotifyImport below so imports
-  // keep following the last-added song. Behavior is unchanged.
+  // Selection + delete. It owns previewId, which the import slice below also
+  // drives (each imported card becomes the preview), so it's composed first to
+  // hand setPreviewId down.
   const {
     selectedIds,
     previewId,
@@ -90,10 +77,8 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     handleDelete,
   } = useSelectAndDelete({ cards, setCards })
 
-  // The Spotify-import slice (paste input, in-flight flag, disabled gating,
-  // handleImport). It commits successful imports straight into this hook's state
-  // via the setters passed below, so the append / preview-follow / counter
-  // behavior is unchanged.
+  // Spotify import. It writes new cards (and bumps the counter / preview) through
+  // the setters handed in below.
   const {
     input,
     setInput,

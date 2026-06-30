@@ -1,7 +1,7 @@
 import styled from 'styled-components'
 import type { CardData } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
-import { Button, MutedLabel } from '../common/shared.styles'
+import { IconButton, MutedLabel } from '../common/shared.styles'
 import { TotalCostField } from './TotalCostField'
 
 // ─── AI controls styled-components ──────────────────────────────────────────────
@@ -53,7 +53,7 @@ interface AiControlsProps {
 export function AiControls({ ai, selectedCards }: AiControlsProps) {
   return (
     <>
-      <Button
+      <IconButton
         // One control whose icon shows the state: 🔍 idle ⇒ (re-)query the
         // selected songs; ⏸ running ⇒ pause; ▶ paused ⇒ resume. Disabled
         // mid-pause, or when idle with no selection.
@@ -69,7 +69,7 @@ export function AiControls({ ai, selectedCards }: AiControlsProps) {
         {ai.aiStatus === 'running' || ai.aiStatus === 'pausing'
           ? '⏸'
           : ai.aiStatus === 'paused' ? '▶' : '🔍'}
-      </Button>
+      </IconButton>
       <ToggleLabel title={ai.webSearchEnabled ? 'Disable web search' : 'Enable web search (≈0.5¢ per query)'}>
         Web search
         <Toggle

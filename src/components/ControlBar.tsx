@@ -4,7 +4,7 @@ import { sheetCount } from '../common/helpers'
 import type { AuthState } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 import type { SongsInterface } from '../songs/useSongs'
-import { Button, MutedLabel } from '../common/shared.styles'
+import { BarButton, IconButton, MutedLabel } from '../common/shared.styles'
 import { TrashIcon } from '../common/icons'
 import { AiControls } from './AiControls'
 
@@ -152,21 +152,21 @@ export function ControlBar({
           <LogoutLink onClick={onLogout}>Log out</LogoutLink>
         </>
       )}
-      <Button
+      <BarButton
         onClick={onGeneratePdf}
         disabled={cardCount === 0 || pdfLoading}
       >
         {pdfLoading
           ? (pdfProgress ? `Generating… ${pdfProgress.done}/${pdfProgress.total}` : 'Generating…')
           : 'Generate PDF'}
-      </Button>
-      <Button
+      </BarButton>
+      <IconButton
         onClick={onDeleteSelected}
         disabled={selectedIds.size === 0}
         title="Delete selected songs"
-        >
+      >
         <TrashIcon />
-      </Button>
+      </IconButton>
       {ai && <AiControls ai={ai} selectedCards={selectedCards} />}
       <CounterBtn onClick={() => onSongCounterChange(Math.max(1, songCounter - 1))}>−</CounterBtn>
       <SongCounterValue

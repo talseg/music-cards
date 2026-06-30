@@ -29,6 +29,28 @@ export const Button = styled.button<{ $primary?: boolean }>`
   }
 `
 
+// One explicit height for the control-bar action buttons so they line up exactly
+// (aspect-ratio can't drive a flex item's width, so square needs real pixels).
+const BAR_BUTTON_HEIGHT = '38px'
+
+// Generate-PDF-style toolbar button pinned to the shared height (keeps its label
+// and side padding).
+export const BarButton = styled(Button)`
+  height: ${BAR_BUTTON_HEIGHT};
+`
+
+// Square icon button for the control bar (trash, AI glass): width === height at
+// the shared button height, contents centered.
+export const IconButton = styled(Button)`
+  width: ${BAR_BUTTON_HEIGHT};
+  height: ${BAR_BUTTON_HEIGHT};
+  flex-shrink: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+`
+
 // Checkbox shared by the song list's header (select-all) and each row, sized to
 // the column. Inherits its cursor from the surrounding select-zone.
 export const RowCheckbox = styled.input`

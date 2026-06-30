@@ -34,7 +34,10 @@ export interface SelectAndDeleteInterface {
   selectRange: (id: number) => void
   toggleSelectAll: () => void
   navigatePreview: (id: number) => void
+  // handleDelete removes one specific song (regardless of selection);
+  // handleDeleteSelected removes the whole current selection.
   handleDelete: (id: number) => void
+  handleDeleteSelected: () => void
 }
 
 export function useSelectAndDelete(deps: SelectAndDeleteDeps): SelectAndDeleteInterface {
@@ -99,11 +102,11 @@ export function useSelectAndDelete(deps: SelectAndDeleteDeps): SelectAndDeleteIn
   // Sheet arrows: move the preview focus only; the selection is untouched.
   const navigatePreview = (id: number) => setPreviewId(id)
 
-  const handleDelete = (id: number) => {
-    // Minus on a selected row removes the whole selection; on a non-selected row
-    // it removes just that one song (the selection stays intact).
-    const deletingSelection = selectedIds.has(id)
-    const toDelete = deletingSelection ? new Set(selectedIds) : new Set<number>([id])
+  // Delete a set of songs: pick the preview's fallback target, remove the rows one
+  // at a time (top first, STAGGER_MS apart) so the user watches them vanish, then
+  // drop the deleted ids from the selection.
+  const deleteCards = (toDelete: Set<number>) => {
+    if (toDelete.size === 0) return
 
     // The song the preview falls back to when the focused one is deleted: the
     // remaining song just before the first deleted one, else the first after it.
@@ -116,20 +119,29 @@ export function useSelectAndDelete(deps: SelectAndDeleteDeps): SelectAndDeleteIn
     // focused song is itself being removed.
     if (previewId !== null && toDelete.has(previewId)) setPreviewId(neighbor)
 
-    // Remove the rows one at a time, top first (DELETE_STAGGER_MS apart). The rows
-    // stay selected (green) as they go, so the user watches the selection shrink
-    // and vanish.
+    // Remove the rows one at a time, top first (STAGGER_MS apart). Selected rows
+    // stay green as they go, so the user watches the selection shrink and vanish.
     const orderedIds = cards.filter(c => toDelete.has(c.id)).map(c => c.id)
     orderedIds.forEach((delId, i) => {
       setTimeout(() => setCards(prev => prev.filter(c => c.id !== delId)), i * STAGGER_MS)
     })
 
-    // Nothing stays selected after a delete: clear the selection once the last
-    // green row has gone.
-    if (deletingSelection) {
-      setTimeout(() => setSelectedIds(new Set()), orderedIds.length * STAGGER_MS)
+    // Drop the deleted ids from the selection once the last row has gone — only if
+    // any were actually selected, to avoid a needless state update.
+    if (orderedIds.some(id => selectedIds.has(id))) {
+      setTimeout(() => setSelectedIds(prev => {
+        const next = new Set(prev)
+        orderedIds.forEach(id => next.delete(id))
+        return next
+      }), orderedIds.length * STAGGER_MS)
     }
   }
+
+  // List trash button: delete just this one song, whether or not it's selected.
+  const handleDelete = (id: number) => deleteCards(new Set([id]))
+
+  // Top trash button: delete every selected song at once.
+  const handleDeleteSelected = () => deleteCards(new Set(selectedIds))
 
   return {
     selectedIds,
@@ -141,5 +153,6 @@ export function useSelectAndDelete(deps: SelectAndDeleteDeps): SelectAndDeleteIn
     toggleSelectAll,
     navigatePreview,
     handleDelete,
+    handleDeleteSelected,
   }
 }

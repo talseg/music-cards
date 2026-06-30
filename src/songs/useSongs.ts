@@ -37,6 +37,7 @@ export interface SongsInterface {
   inputRef: RefObject<HTMLInputElement | null>
   handleImport: () => Promise<void>
   handleDelete: (id: number) => void
+  handleDeleteSelected: () => void
   updateCardField: (id: number, field: EditableField, value: string) => void
   handleGeneratePdf: () => Promise<void>
 }
@@ -77,6 +78,7 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     toggleSelectAll,
     navigatePreview,
     handleDelete,
+    handleDeleteSelected,
   } = useSelectAndDelete({ cards, setCards })
 
   // Spotify import. It writes new cards (and bumps the counter / preview) through
@@ -149,6 +151,7 @@ export function useSongs(loggedIn: boolean) : SongsInterface {
     inputRef,
     handleImport,
     handleDelete,
+    handleDeleteSelected,
     updateCardField,
     handleGeneratePdf,
   }

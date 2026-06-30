@@ -5,6 +5,7 @@ import type { AuthState } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 import type { SongsInterface } from '../songs/useSongs'
 import { Button, MutedLabel } from '../common/shared.styles'
+import { TrashIcon } from '../common/icons'
 import { AiControls } from './AiControls'
 
 // ─── Control bar styled-components ──────────────────────────────────────────────
@@ -132,6 +133,7 @@ export function ControlBar({
     pdfLoading,
     pdfProgress,
     handleGeneratePdf: onGeneratePdf,
+    handleDeleteSelected: onDeleteSelected,
   } = songs
   const cardCount = cards.length
   // The songs the AI glass acts on. Computed here (not stored) so it always
@@ -157,6 +159,13 @@ export function ControlBar({
         {pdfLoading
           ? (pdfProgress ? `Generating… ${pdfProgress.done}/${pdfProgress.total}` : 'Generating…')
           : 'Generate PDF'}
+      </Button>
+      <Button
+        onClick={onDeleteSelected}
+        disabled={selectedIds.size === 0}
+        title="Delete selected songs"
+        >
+        <TrashIcon />
       </Button>
       {ai && <AiControls ai={ai} selectedCards={selectedCards} />}
       <CounterBtn onClick={() => onSongCounterChange(Math.max(1, songCounter - 1))}>−</CounterBtn>

@@ -4,6 +4,7 @@ import { trackIdOf } from '../common/helpers'
 import type { CardData, EditableField } from '../common/types'
 import type { AiState } from '../ai/useAiDates'
 import { RowCheckbox } from '../common/shared.styles'
+import { TrashIcon } from '../common/icons'
 
 // The delicate in-place edit affordance shared by the editable cells, matching
 // SongCard's editable fields: a text cursor with a faint dashed outline on
@@ -348,10 +349,10 @@ export function SongListRow({
         ⧉
       </CopyBtn>
       <DeleteBtn
-        title="Remove"
+        title="Delete this song"
         onClick={e => { e.stopPropagation(); onDelete(card.id) }}
       >
-        −
+        <TrashIcon size={14} />
       </DeleteBtn>
     </ListItem>
   )

@@ -115,9 +115,9 @@ interface ControlBarProps {
   ai?: AiState
 }
 
-// The app's top control bar: auth status/login + Generate PDF + AI glass (date
-// the selection) + Pause/Resume + web-search toggle / Total-$ + song counter +
-// sheet count + version.
+// The app's top control bar: auth status/login + Generate PDF + Delete selected +
+// AI glass (date the selection) + Pause/Resume + web-search toggle / Total-$ +
+// song counter + sheet count + version.
 export function ControlBar({
   auth,
   onLogin,

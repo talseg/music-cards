@@ -60,7 +60,7 @@ function App() {
   return (
     <AppContainer className='app_wrapper'>
       <ItemsContainer>
-        {/* Top control bar: login status + Generate PDF + AI dates + counter + sheets + version */}
+        {/* Top control bar: login status + Generate PDF + Delete selected + AI dates + counter + sheets + version */}
         <ControlBar
           auth={auth}
           onLogin={login}

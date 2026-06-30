@@ -3,18 +3,16 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { CardData } from '../common/types'
 import { STAGGER_MS } from '../common/constants'
 
-// What useSelectAndDelete needs from the song domain. The card list is the live
-// useSongs state (read for selection math, mutated by delete), passed straight
-// through so the behavior runs unchanged, exactly where it did before.
+// What useSelectAndDelete needs from the song domain: the live useSongs card list,
+// read for selection math and mutated by delete.
 interface SelectAndDeleteDeps {
   cards: CardData[]
   setCards: Dispatch<SetStateAction<CardData[]>>
 }
 
 // The selection & deletion slice of the song domain: the multi-selection set,
-// the single preview focus, the click handlers that move them, and the delete
-// that removes a row or the whole selection. Split out of useSongs purely to
-// shrink it — the behavior is identical.
+// the single preview focus, the click handlers that move them, and the two
+// deletes (one song / the whole selection).
 //
 // Selection model (no hidden state — everything below is visible):
 //   selectedIds  - the multi-selection set (green / operated-on); may be empty.

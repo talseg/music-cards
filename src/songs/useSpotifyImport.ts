@@ -96,7 +96,7 @@ export function useSpotifyImport(deps: ImportDeps): SpotifyImportInterface {
 
       // Append the new rows one at a time, top first (STAGGER_MS apart), so the
       // bunch appears gradually instead of popping in all at once — mirroring how
-      // handleDelete removes a selection. Each appended card also becomes the
+      // a multi-delete staggers removal. Each appended card also becomes the
       // preview focus, so the list scrolls to follow the last added song (imports
       // start with nothing selected — only the preview moves).
       newCards.forEach((card, i) => {

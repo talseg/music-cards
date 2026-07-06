@@ -19,7 +19,7 @@
 Print the deck, cut the cards out, and play: scan a QR code to hear the song, guess its details, then flip the card to check.
 
 <p align="center">
-  <img src="src/assets/cards-example.png" alt="Example Music Cards — fronts with song details, backs with QR codes" width="520" />
+  <img src="public/cards-example.png" alt="Example Music Cards — fronts with song details, backs with QR codes" width="520" />
   <br>
   <sub><em>An example of cards — front (song details) and back (QR code).</em></sub>
 </p>
@@ -66,7 +66,7 @@ Once your deck is printed, there are two ways to play:
 1. Sign in to the **[Spotify Developer Dashboard](https://developer.spotify.com/dashboard)**.
 2. **Create app** → fill in any App name and description.
 3. Copy the **Client ID** and **Client Secret** (you'll need them for `.env`).
-4. Under **Redirect URIs**, copy in the lines from [`allowed-redirect-uris.txt`](./allowed-redirect-uris.txt) (in the project root):
+4. Under **Redirect URIs**, add **all** the lines from [`allowed-redirect-uris.txt`](./allowed-redirect-uris.txt) (in the project root). These are the addresses the app is allowed to log in from, and they never change:
    - `https://127.0.0.1:5173/callback` &nbsp;(for `npm run dev`)
    - `https://127.0.0.1:4173/callback` &nbsp;(for `npm run preview`)
    - `https://127.0.0.1:4444/callback` &nbsp;(spare dedicated port)
@@ -75,7 +75,9 @@ Once your deck is printed, there are two ways to play:
 7. Be sure to scroll down and Click **Save**.
 8. Open the **User Management** tab and add the name + email of every Spotify account that will use the app.
 
-> ⚠️ **Common pitfall:** your computer's LAN IP can change after a reboot, so the LAN entries from step 5 stop matching — you **must** add the new IP to the Redirect URIs. The `127.0.0.1` entries never change, so on the computer itself login always works.
+> ⚠️ **Common pitfall:** your computer's LAN IP can change after a reboot, so the LAN entries from step 5 stop matching — you **must** add the new IP to the Redirect URIs. The `127.0.0.1` entries from step 4 never change, so on the computer itself login always works.
+>
+> 💡 To run the app on a port that isn't listed, add its `https://127.0.0.1:<port>/callback` line to **both** `allowed-redirect-uris.txt` and the dashboard (see **Allowed ports** under *Running the app*).
 
 </details>
 

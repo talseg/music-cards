@@ -137,6 +137,12 @@ npm run dev -- --port 4444
 > ℹ️ The app runs over **HTTPS** with a self-signed certificate, so your browser will show a security warning on first visit — accept it to continue.
 >
 > ℹ️ Opening `https://localhost:5173` works for browsing, but **Spotify login only works from `https://127.0.0.1:5173`** — the address printed in the terminal (click that one). The on-screen hint turns orange when the current address isn't the registered one. From a phone, use the computer's LAN IP instead (see the Redirect URIs step above).
+>
+> 💡 **VS Code tip:** clicking the `https://127.0.0.1:5173/` link in the integrated terminal may open it in a tab *inside* VS Code (the integrated browser). To make it open in your regular browser, add this to your VS Code settings (`Ctrl+Shift+P` → *Preferences: Open User Settings (JSON)*):
+>
+> ```json
+> "workbench.browser.openLocalhostLinks": false
+> ```
 
 **Allowed ports.** The app refuses to log in from a port that isn't listed in [`allowed-redirect-uris.txt`](./allowed-redirect-uris.txt) — the Login button is disabled and a red message tells you the exact line to add. This protects you from Spotify's dead-end *"redirect_uri: Not matching configuration"* page, which appears when the current address isn't registered in the dashboard. To use another port, add its `https://127.0.0.1:<port>/callback` line to the file **and** to the dashboard, then restart the server (the file is read at startup). If a port is already busy, the server exits with an error instead of silently moving to the next port — a moved port wouldn't be registered.
 

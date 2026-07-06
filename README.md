@@ -70,24 +70,12 @@ Once your deck is printed, there are two ways to play:
    - `https://127.0.0.1:5173/callback` &nbsp;(for `npm run dev`)
    - `https://127.0.0.1:4173/callback` &nbsp;(for `npm run preview`)
    - `https://127.0.0.1:4444/callback` &nbsp;(spare dedicated port)
-5. **Only if you'll open the app from another device** (e.g. a phone on your Wi-Fi), also add `https://<your-ip-address>:5173/callback` (and `:4173`) with the computer's LAN IP.
+5. **Only if you'll open the app from another device** (e.g. a phone on your Wi-Fi), also add `https://<your-ip-address>:5173/callback` (and `:4173`) with the computer's LAN IP (find it with `ipconfig | findstr IPv4`).
 6. Under **Which API/SDKs are you planning to use?**, check **Web API** and **Web Playback SDK**.
 7. Be sure to scroll down and Click **Save**.
 8. Open the **User Management** tab and add the name + email of every Spotify account that will use the app.
 
 > ⚠️ **Common pitfall:** your computer's LAN IP can change after a reboot, so the LAN entries from step 5 stop matching — you **must** add the new IP to the Redirect URIs. The `127.0.0.1` entries never change, so on the computer itself login always works.
-
-</details>
-
-<details>
-<summary><strong>🔍 Finding your IP address (for phone/LAN access)</strong></summary>
-
-<br>
-
-```bash
-ipconfig | findstr IPv4
-# IPv4 Address. . . . . . . . . . . : <this-is-your-ip-address>
-```
 
 </details>
 
@@ -136,7 +124,7 @@ npm run dev -- --port 4444
 
 > ℹ️ The app runs over **HTTPS** with a self-signed certificate, so your browser will show a security warning on first visit — accept it to continue.
 >
-> ℹ️ Opening `https://localhost:5173` works for browsing, but **Spotify login only works from `https://127.0.0.1:5173`** — the address printed in the terminal (click that one). The on-screen hint turns orange when the current address isn't the registered one. From a phone, use the computer's LAN IP instead (see the Redirect URIs step above).
+> ℹ️ Open it at **`https://127.0.0.1:5173`** (dev) or **`https://127.0.0.1:4173`** (preview) — the address printed in the terminal. From a phone, use the computer's LAN IP instead (see the Redirect URIs step above).
 >
 > 💡 **VS Code tip:** clicking the `https://127.0.0.1:5173/` link in the integrated terminal may open it in a tab *inside* VS Code (the integrated browser). To make it open in your regular browser, add this to your VS Code settings (`Ctrl+Shift+P` → *Preferences: Open User Settings (JSON)*):
 >

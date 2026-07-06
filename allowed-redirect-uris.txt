@@ -1,0 +1,6 @@
+# Redirect URIs this app is allowed to run on (one per line) — copy these lines
+# into your Spotify Developer Dashboard. The app only enforces the ports; add a
+# line here (and in the dashboard) to allow another port, then restart the server.
+https://127.0.0.1:5173/callback
+https://127.0.0.1:4173/callback
+https://127.0.0.1:4444/callback

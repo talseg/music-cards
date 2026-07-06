@@ -5,6 +5,7 @@ import { SongInput } from './components/SongInput'
 import { RedirectUriHint } from './components/RedirectUriHint'
 import { WebSearchConfirmModal } from './components/WebSearchConfirmModal'
 import { useAuth } from './auth/useAuth'
+import { DashboardLink } from './common/shared.styles'
 import { useAiDates } from './ai/useAiDates'
 import { useSongs } from './songs/useSongs'
 import styled from 'styled-components'
@@ -40,7 +41,7 @@ const AuthError = styled.div`
 // The app root: wires the auth / songs / AI-dates hooks together and lays out the
 // control bar, import input, song list, and sheet preview.
 function App() {
-  const { auth, loggedIn, login, logout } = useAuth()
+  const { auth, loggedIn, login, logout, disallowedPort } = useAuth()
   const songsInterface = useSongs(loggedIn)
   const {
     cards,
@@ -65,13 +66,29 @@ function App() {
           auth={auth}
           onLogin={login}
           onLogout={logout}
+          loginDisabled={disallowedPort !== null}
           songs={songsInterface}
           ai={ai}
         />
         {auth.kind === 'out' && auth.error && <AuthError>{auth.error}</AuthError>}
 
-        {/* Redirect URI hint when logged out */}
-        {auth.kind === 'out' && <RedirectUriHint />}
+        {/* Logged out: either the disallowed-port error (login is blocked) or the
+            regular redirect-URI hint */}
+        {auth.kind === 'out' && (disallowedPort ? (
+          <AuthError>
+            Port {disallowedPort.port} is not in the allowed ports file.{'\n'}
+            Add {disallowedPort.suggestedUri} to allowed-redirect-uris.txt and to your{' '}
+            <DashboardLink
+              href="https://developer.spotify.com/dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Spotify Developer Dashboard
+            </DashboardLink>
+          </AuthError>
+        ) : (
+          <RedirectUriHint />
+        ))}
 
         <SongInput songs={songsInterface} />
 

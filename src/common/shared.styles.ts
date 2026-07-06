@@ -51,6 +51,12 @@ export const IconButton = styled(Button)`
   justify-content: center;
 `
 
+// Blue underlined link to the Spotify Developer Dashboard, shared by the
+// logged-out redirect-URI hint and the disallowed-port error.
+export const DashboardLink = styled.a`
+  color: #0052cc;
+`
+
 // Checkbox shared by the song list's header (select-all) and each row, sized to
 // the column. Inherits its cursor from the surrounding select-zone.
 export const RowCheckbox = styled.input`

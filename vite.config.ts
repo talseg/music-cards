@@ -1,6 +1,33 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
+import fs from 'node:fs'
+
+// ── Allowed ports ─────────────────────────────────────────────────────────────
+// The redirect URIs the app may run on live in allowed-redirect-uris.txt (repo
+// root, committed) so users can copy them straight into the Spotify dashboard.
+// Only the ports are enforced; they are injected into the bundle below and
+// checked in src/auth/useAuth.ts. Editing the file requires a server restart.
+const DEFAULT_ALLOWED_PORTS = ['5173', '4173', '4444']
+
+function readAllowedPorts(): string[] {
+  try {
+    const lines = fs.readFileSync('allowed-redirect-uris.txt', 'utf-8').split('\n')
+    const ports = lines
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('#'))
+      .map(line => new URL(line).port)
+      .filter(port => port !== '')
+    if (ports.length === 0) throw new Error('no URIs with an explicit port found')
+    return [...new Set(ports)]
+  } catch (e) {
+    console.warn(
+      `[allowed-redirect-uris] falling back to default ports ${DEFAULT_ALLOWED_PORTS.join(', ')}: ${
+        e instanceof Error ? e.message : e}`,
+    )
+    return DEFAULT_ALLOWED_PORTS
+  }
+}
 
 // ── dev:sc only ───────────────────────────────────────────────────────────────
 // Debug helper, active solely under `npm run dev:sc` (vite --mode sc). It runs
@@ -36,6 +63,31 @@ function styledComponentsNames(): Plugin {
   }
 }
 
+// ── Terminal banner ───────────────────────────────────────────────────────────
+// Print the Local URL as 127.0.0.1 — the dashboard-registrable address — instead
+// of localhost, so Ctrl+click lands on an origin where Spotify login works.
+function loopbackBanner(): Plugin {
+  const patchPrintUrls = (server: {
+    printUrls: () => void
+    resolvedUrls: { local: string[] } | null
+  }) => {
+    const printUrls = server.printUrls.bind(server)
+    server.printUrls = () => {
+      if (server.resolvedUrls) {
+        server.resolvedUrls.local = server.resolvedUrls.local.map(
+          u => u.replace('//localhost:', '//127.0.0.1:'),
+        )
+      }
+      printUrls()
+    }
+  }
+  return {
+    name: 'loopback-banner',
+    configureServer: patchPrintUrls,
+    configurePreviewServer: patchPrintUrls,
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Load all env vars (empty prefix => includes non-VITE_ vars like the secret).
@@ -48,10 +100,19 @@ export default defineConfig(({ mode }) => {
   const scNames = mode === 'sc'
 
   return {
-    plugins: [react(), basicSsl(), ...(scNames ? [styledComponentsNames()] : [])],
+    plugins: [react(), basicSsl(), loopbackBanner(), ...(scNames ? [styledComponentsNames()] : [])],
+    define: {
+      'import.meta.env.VITE_ALLOWED_PORTS': JSON.stringify(readAllowedPorts().join(',')),
+    },
+    preview: {
+      strictPort: true,
+    },
     server: {
       host: true,
       https: {},
+      // Fail fast when the port is busy instead of silently bumping to the next
+      // one — a bumped port isn't registered as a Spotify redirect URI.
+      strictPort: true,
       allowedHosts: ['tal-pc'],
       proxy: {
         '/api/spotify/token': {

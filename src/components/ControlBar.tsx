@@ -109,6 +109,9 @@ interface ControlBarProps {
   auth: AuthState
   onLogin: () => void
   onLogout: () => void
+  // True when the app runs on a disallowed port: login would dead-end on
+  // Spotify's invalid-redirect-URI page, so the button is disabled.
+  loginDisabled?: boolean
   songs: SongsInterface
   // Undefined when the AI-dates feature is disabled; its presence is what marks
   // the feature active (see useAiDates).
@@ -122,6 +125,7 @@ export function ControlBar({
   auth,
   onLogin,
   onLogout,
+  loginDisabled,
   songs,
   ai,
 }: ControlBarProps) {
@@ -144,7 +148,7 @@ export function ControlBar({
     <Bar>
       {auth.kind === 'checking' && <MutedLabel>Checking login…</MutedLabel>}
       {auth.kind === 'out' && (
-        <SpotifyButton onClick={onLogin}>Log in with Spotify</SpotifyButton>
+        <SpotifyButton onClick={onLogin} disabled={loginDisabled}>Log in with Spotify</SpotifyButton>
       )}
       {auth.kind === 'in' && (
         <>

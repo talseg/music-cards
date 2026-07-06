@@ -66,19 +66,21 @@ Once your deck is printed, there are two ways to play:
 1. Sign in to the **[Spotify Developer Dashboard](https://developer.spotify.com/dashboard)**.
 2. **Create app** → fill in any App name and description.
 3. Copy the **Client ID** and **Client Secret** (you'll need them for `.env`).
-4. Under **Redirect URIs**, add both of these (replace `<your-ip-address>`):
-   - `https://<your-ip-address>:5173/callback` &nbsp;(for `npm run dev`)
-   - `https://<your-ip-address>:4173/callback` &nbsp;(for `npm run preview`)
-5. Under **Which API/SDKs are you planning to use?**, check **Web API** and **Web Playback SDK**.
-6. Be sure to scroll down and Click **Save**.
-7. Open the **User Management** tab and add the name + email of every Spotify account that will use the app.
+4. Under **Redirect URIs**, copy in the lines from [`allowed-redirect-uris.txt`](./allowed-redirect-uris.txt) (in the project root):
+   - `https://127.0.0.1:5173/callback` &nbsp;(for `npm run dev`)
+   - `https://127.0.0.1:4173/callback` &nbsp;(for `npm run preview`)
+   - `https://127.0.0.1:4444/callback` &nbsp;(spare dedicated port)
+5. **Only if you'll open the app from another device** (e.g. a phone on your Wi-Fi), also add `https://<your-ip-address>:5173/callback` (and `:4173`) with the computer's LAN IP.
+6. Under **Which API/SDKs are you planning to use?**, check **Web API** and **Web Playback SDK**.
+7. Be sure to scroll down and Click **Save**.
+8. Open the **User Management** tab and add the name + email of every Spotify account that will use the app.
 
-> ⚠️ **Common pitfall:** your IP address can change after a reboot. If it does, you **must** add the new IP to the Redirect URIs above.
+> ⚠️ **Common pitfall:** your computer's LAN IP can change after a reboot, so the LAN entries from step 5 stop matching — you **must** add the new IP to the Redirect URIs. The `127.0.0.1` entries never change, so on the computer itself login always works.
 
 </details>
 
 <details>
-<summary><strong>🔍 Finding your IP address</strong></summary>
+<summary><strong>🔍 Finding your IP address (for phone/LAN access)</strong></summary>
 
 <br>
 
@@ -122,16 +124,21 @@ PERPLEXITY_API_KEY=your_perplexity_api_key
 
 ```bash
 # Development
-npm run dev        # → https://<your-ip-address>:5173
+npm run dev        # → https://127.0.0.1:5173
 
 # Production preview
 npm run build
-npm run preview    # → https://<your-ip-address>:4173
+npm run preview    # → https://127.0.0.1:4173
+
+# Custom port (must be listed in allowed-redirect-uris.txt)
+npm run dev -- --port 4444
 ```
 
 > ℹ️ The app runs over **HTTPS** with a self-signed certificate, so your browser will show a security warning on first visit — accept it to continue.
 >
-> 🚫 Open it via your **IP address**, not `https://localhost:5173`.
+> ℹ️ Opening `https://localhost:5173` works for browsing, but **Spotify login only works from `https://127.0.0.1:5173`** — the address printed in the terminal (click that one). The on-screen hint turns orange when the current address isn't the registered one. From a phone, use the computer's LAN IP instead (see the Redirect URIs step above).
+
+**Allowed ports.** The app refuses to log in from a port that isn't listed in [`allowed-redirect-uris.txt`](./allowed-redirect-uris.txt) — the Login button is disabled and a red message tells you the exact line to add. This protects you from Spotify's dead-end *"redirect_uri: Not matching configuration"* page, which appears when the current address isn't registered in the dashboard. To use another port, add its `https://127.0.0.1:<port>/callback` line to the file **and** to the dashboard, then restart the server (the file is read at startup). If a port is already busy, the server exits with an error instead of silently moving to the next port — a moved port wouldn't be registered.
 
 ---
 

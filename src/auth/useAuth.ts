@@ -21,6 +21,30 @@ export function getRedirectUri(): string {
   return auth_.getRedirectUri()
 }
 
+// ─── Allowed-port check ───────────────────────────────────────────────────────
+
+// The current port when it isn't in allowed-redirect-uris.txt, plus the exact
+// URI line to add there (and to the Spotify dashboard) to allow it.
+export interface DisallowedPort {
+  port: string
+  suggestedUri: string
+}
+
+// The allowed ports come from allowed-redirect-uris.txt, injected at build time
+// by vite.config.ts. An empty location port means the protocol default (443) on
+// a real deployment — always allowed. Computed once: the location can't change
+// without a page load.
+function checkPort(): DisallowedPort | null {
+  const allowed = (import.meta.env.VITE_ALLOWED_PORTS ?? '').split(',')
+  const port = window.location.port
+  if (port === '' || allowed.includes(port)) return null
+  return { port, suggestedUri: `https://127.0.0.1:${port}/callback` }
+}
+
+// Exported for RedirectUriHint (a plain value, not hook state — the location
+// can't change without a page load).
+export const disallowedPort = checkPort()
+
 // Map the shared auth module's neutral result onto this app's AuthState model.
 // (Error classification and the memoized exactly-once init live in
 // src/auth/spotify-auth.ts.)
@@ -54,6 +78,9 @@ export interface AuthInterface {
   loggedIn: boolean
   login: () => void
   logout: () => void
+  // Non-null when the app runs on a port missing from allowed-redirect-uris.txt;
+  // login is blocked (Spotify would dead-end on its "invalid redirect URI" page).
+  disallowedPort: DisallowedPort | null
 }
 
 // Owns the (non-blocking) Spotify login feature: auth phase, the mount-time
@@ -75,6 +102,7 @@ export function useAuth(): AuthInterface {
   }, [])
 
   const login = () => {
+    if (disallowedPort) return // button is disabled; never navigate to a dead end
     sdk.authenticate().catch((e: unknown) => {
       const message = e instanceof Error ? e.message : String(e)
       setAuth({ kind: 'out', error: `Login failed: ${message}` })
@@ -86,5 +114,5 @@ export function useAuth(): AuthInterface {
     setAuth({ kind: 'out', error: null })
   }
 
-  return { auth, loggedIn: auth.kind === 'in', login, logout }
+  return { auth, loggedIn: auth.kind === 'in', login, logout, disallowedPort }
 }

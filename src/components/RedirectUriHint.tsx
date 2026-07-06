@@ -1,32 +1,34 @@
 import styled from 'styled-components'
-import { getRedirectUri } from '../auth/useAuth'
+import { getRedirectUri, disallowedPort } from '../auth/useAuth'
+import { DashboardLink } from '../common/shared.styles'
 
 // ─── Redirect URI hint styled-components ────────────────────────────────────────
 
-const Hint = styled.div`
+// When the current address is a registrable one (127.0.0.1 on an allowed port)
+// the hint is the usual muted reminder; on any other address (localhost, a LAN
+// IP) it turns to a warning color — that URI either can't be registered or only
+// stays registered until the machine's address changes.
+const Hint = styled.div<{ $warning: boolean }>`
   margin: 0;
   font-size: 0.78rem;
-  color: #aaa;
+  color: ${p => p.$warning ? '#b26a00' : '#aaa'};
   max-width: 680px;
   white-space: pre-wrap;
 `
 
-const Uri = styled.span`
+const Uri = styled.span<{ $warning: boolean }>`
   font-family: monospace;
-  color: #888;
-`
-
-const DashboardLink = styled.a`
-  color: #0052cc;
+  color: ${p => p.$warning ? '#b26a00' : '#888'};
 `
 
 // ─── Redirect URI hint ──────────────────────────────────────────────────────────
 
 export function RedirectUriHint() {
+  const warning = window.location.hostname !== '127.0.0.1' || disallowedPort !== null
   return (
-    <Hint>
+    <Hint $warning={warning}>
       Make sure{' '}
-      <Uri>{getRedirectUri()}</Uri>{' '}
+      <Uri $warning={warning}>{getRedirectUri()}</Uri>{' '}
       is added in your{' '}
       <DashboardLink
         href="https://developer.spotify.com/dashboard"

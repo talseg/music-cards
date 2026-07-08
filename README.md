@@ -38,7 +38,7 @@ Once your deck is printed, there are two ways to play:
 ## 🎮 Features
 
 - 🎧 Add a single **track**, a whole **album**, a **playlist**, or your entire **Liked Songs** — just paste a Spotify link.
-- 🖨️ Export a **print-ready PDF** of double-sided cards (QR + song details).
+- 🖨️ Export a **print-ready PDF** of double-sided cards (QR + song details) — [see an example PDF](public/printedCardsExample.pdf).
 - ✅ **Multiselect** rows (checkbox, shift-click range, select-all) to act on a batch at once.
 - 📅 Optional **AI release-year lookup** so you don't have to research dates by hand.
 - ⏯️ **Pause / resume** the AI lookup at any time.
